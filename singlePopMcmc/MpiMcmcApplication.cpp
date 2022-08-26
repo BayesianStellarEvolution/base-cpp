@@ -382,11 +382,13 @@ void MpiMcmcApplication::stage2Burnin(Chain<Cluster>& chain, std::function<void(
         {
             // Run big steps for the entire trial
             chain.run(AdaptiveMcmcStage::AdaptiveBurnin, proposalFunc, logPostFunc, checkPriors, trialIter);
+            adaptiveBurnIter += trialIter;
         }
         else if (acceptedOnce)
         {
             proposalFunc = std::bind(&MpiMcmcApplication::propClustIndep, this, _1, std::cref(ctrl), std::cref(stepSize), 1);
             chain.run(AdaptiveMcmcStage::AdaptiveBurnin, proposalFunc, logPostFunc, checkPriors, trialIter / 2);
+            adaptiveBurnIter += trialIter / 2;
         }
         else
         {
@@ -396,6 +398,8 @@ void MpiMcmcApplication::stage2Burnin(Chain<Cluster>& chain, std::function<void(
             // Then run smaller steps for the second half
             proposalFunc = std::bind(&MpiMcmcApplication::propClustIndep, this, _1, std::cref(ctrl), std::cref(stepSize), 1);
             chain.run(AdaptiveMcmcStage::AdaptiveBurnin, proposalFunc, logPostFunc, checkPriors, trialIter / 2);
+
+            adaptiveBurnIter += trialIter;
         }
 
         double acceptanceRatio = chain.acceptanceRatio();
