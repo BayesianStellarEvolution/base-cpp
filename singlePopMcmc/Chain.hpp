@@ -17,6 +17,7 @@
 #include "IO/Records.hpp"
 #include "Matrix.hpp"
 #include "McmcApplication.hpp"
+#include "Utility.hpp"
 
 using std::cout;
 using std::endl;
@@ -106,7 +107,7 @@ class Chain : public McmcApplication
         }
     }
 
-    Matrix<double, NPARAMS, NPARAMS> makeCholeskyDecomp() const
+    Matrix<double, NPARAMS, NPARAMS> makeCholeskyDecomp(bool veryVerbose = false) const
     {
         double cov;
         int nParamsUsed = 0;
@@ -153,29 +154,35 @@ class Chain : public McmcApplication
             }
         }
 
-        // for (int k = 0; k < params.at(0).size(); ++k)
-        // {
-        //     for (int i = 0; i < NPARAMS; i++)
-        //     {
-        //         if (priorVar.at(i) > EPSILON || i == YYA || i == YYB || i == LAMBDA)
-        //         {
-        //             cout << base::utility::format("%10.6f") % params.at(i).at(k) << " ";
-        //         }
-        //     }
+        if ( veryVerbose )
+        {
+            cout << "\nSampling history for Cholesky Decomposition Matrix:" << endl;
 
-        //     cout << '\n';
-        // }
+            for (size_t k = 0; k < params.at(0).size(); ++k)
+            {
+                for (int i = 0; i < NPARAMS; ++i)
+                {
+                    if (priorVar.at(i) > EPSILON)
+                    {
+                        cout << std::setw(10) << std::fixed << std::setprecision(6) << params.at(i).at(k) << " ";
+                    }
+                }
 
-        // cout << endl;
+                cout << '\n';
+            }
 
-        // for (int i = 0; i < nParamsUsed; i++)
-        // {
-        //     for (int j = 0; j < nParamsUsed; j++)
-        //     {
-        //         cout << base::utility::format("%10.6f") % gsl_matrix_get (covMat, i, j) << " ";
-        //     }
-        //     cout << endl;
-        // }
+            cout << "\nCholesky Decomposition Matrix:" << endl;
+
+            for (int i = 0; i < nParamsUsed; i++)
+            {
+                for (int j = 0; j < nParamsUsed; j++)
+                {
+                    if ( j <= i )
+                        cout << std::setw(10) << std::fixed << std::setprecision(6) << gsl_matrix_get (covMat, i, j) << " ";
+                }
+                cout << endl;
+            }
+        }
 
         /* Cholesky decomposition */
         gsl_linalg_cholesky_decomp (covMat);

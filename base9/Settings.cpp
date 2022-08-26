@@ -266,8 +266,6 @@ void Settings::fromCLI (int argc, char **argv)
 
         {"wdAtmosphereModel", required_argument, 0, 0xBD},
 
-        {"startWithBurnin", required_argument, 0, 0xB9},
-
         // Various flags
         // These are now handled the same way as the parameters due to occasional compiler weirdness
         {"verbose", no_argument, 0, 0xAF},
@@ -281,7 +279,9 @@ void Settings::fromCLI (int argc, char **argv)
         {"eepInterpolationPower", required_argument, 0, 0xBC},
         {"wdInterpolationPower", required_argument, 0, 0xBB},
         {"includeBurnin", no_argument, 0, 0xBA},
+        {"veryVerbose", no_argument, 0, 0xB9},
         {"stopAfterBurnin", no_argument, 0, 0xB8},
+        {"startWithBurnin", required_argument, 0, 0xB7},
         {0, 0, 0, 0}
     };
 
@@ -510,6 +510,10 @@ void Settings::fromCLI (int argc, char **argv)
                 verbose = true;
                 break;
 
+            case 0xB9:
+                veryVerbose = true;
+                break;
+
             case 0xAE:
                 noBinaries = true;
                 break;
@@ -595,14 +599,13 @@ void Settings::fromCLI (int argc, char **argv)
                 includeBurnin = true;
                 break;
 
-            case 0xB9:
-                istringstream (string (optarg)) >> startWithBurnin;
-                break;
-
             case 0xB8:
                 stopAfterBurnin = true;
                 break;
 
+            case 0xB7:
+                istringstream (string (optarg)) >> startWithBurnin;
+                break;
 
             case '?':
                 // getopt_long already printed an error message.

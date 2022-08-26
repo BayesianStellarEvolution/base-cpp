@@ -31,6 +31,7 @@ class Settings
     bool development = false;
     bool details = false;
     bool verbose = false;
+    bool veryVerbose = false;
 
     bool includeBurnin = false;
 
