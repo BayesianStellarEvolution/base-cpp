@@ -482,6 +482,8 @@ void MpiMcmcApplication::loadPreviousBurnin(string filename, Chain<Cluster>& cha
 
         chain.storePars(sample.stage, clust, logPost);
     }
+
+    chain.setClust(clust);
 }
 
 

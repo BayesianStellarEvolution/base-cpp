@@ -51,6 +51,10 @@ class Chain : public McmcApplication
         }
     }
 
+    void setClust(T clust)
+    {
+        this->clust = clust;
+    }
 
     void storePars(AdaptiveMcmcStage stage, T clust, double logPost, bool save = true)
     {
