@@ -6,6 +6,8 @@
 
 #cmakedefine BUILD_NONINTERACTIVE
 
+#cmakedefine IS_ARM
+
 #cmakedefine HAS_EXP10
 #ifndef HAS_EXP10
   #include <cmath>

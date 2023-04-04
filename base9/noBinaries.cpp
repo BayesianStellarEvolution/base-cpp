@@ -19,17 +19,19 @@
 #include "Utility.hpp"
 #include "WhiteDwarf.hpp"
 
+using std::array;
+using std::mutex;
+using std::vector;
+using base::utility::ThreadPool;
+
+#ifndef IS_ARM
+
 #include <emmintrin.h> // SSE2 (_pd, _m128d)
 #include <pmmintrin.h> // SSE3 (hadd)
 
 extern "C" {
 #include <sleef/sleefsimd.h> // xexp
 }
-
-using std::array;
-using std::mutex;
-using std::vector;
-using base::utility::ThreadPool;
 
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
 
@@ -338,82 +340,162 @@ vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels
     return vPost;
 }
 
+#elif BUILD_PARALLEL
 
-// A (parallel) reference implementation of the above. Tthis
+// A (parallel) reference implementation of the above. This
 // implementation does not require pre-allocated/aligned memory or any
 // pre-computation, It also doesn't use SIMD and runs some 50x slower
 // than the above. YMMV.
 
-// vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels, const Isochrone &isochrone, ThreadPool &pool, vector<StellarSystem> &systems)
-// {
-//     mutex logPostMutex;
-//     const int isoIncrem = 80;    /* ok for YY models? */
+vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels, const Isochrone &isochrone, ThreadPool &pool, vector<StellarSystem> &systems, const bool modIsParallax, const int eepInterpolationPower)
+{
+    mutex logPostMutex;
+    const int isoIncrem =
+        eepInterpolationPower == 0 ? 80 // Old default
+                                   : eepInterpolationPower > 0 ? 64 << eepInterpolationPower // 2^(5 + eepInterpolationPower)
+                                                               : 64 >> -eepInterpolationPower;
 
-//     vector<double> secondaryMags;
+    vector<double> secondaryMags;
 
-//     {
-//         Star s;
-//         s.mass = 0.0;
+    {
+        Star s;
+        s.mass = 0.0;
 
-//         secondaryMags = s.getMags(clust, evoModels, isochrone);
-//     }
+        secondaryMags = s.getMags(clust, evoModels, isochrone);
+    }
 
-//     vector<double> post(systems.size(), 0.0);
+    vector<double> post(systems.size(), 0.0);
 
-//     {
-//         auto agbTipMass = isochrone.agbTipMass();
-//         auto isoSize    = isochrone.eeps.size();
-//         auto nSystems   = systems.size();
+    {
+        auto agbTipMass = isochrone.agbTipMass();
+        auto isoSize    = isochrone.eeps.size();
+        auto nSystems   = systems.size();
 
-//         pool.parallelFor(isoSize - 1, [=,&post, &isochrone, &evoModels, &clust, &secondaryMags, &logPostMutex](int m)
-//         {
-//             double dIsoMass = isochrone.eeps[m + 1].mass - isochrone.eeps[m].mass;
+        pool.parallelFor(isoSize - 1, [=,&post, &isochrone, &evoModels, &clust, &secondaryMags, &logPostMutex](int m)
+        {
+            double dIsoMass = isochrone.eeps[m + 1].mass - isochrone.eeps[m].mass;
 
-//             // In the event that we have an invalid range, skip that range
-//             // This generally occurs only at very high EEPs, where the masses are close together
-//             if (dIsoMass > 0.0)
-//             {
-//                 Star s;
-//                 vector<double> primaryMags, combinedMags, threadPost(nSystems, 0.0);
+            // In the event that we have an invalid range, skip that range
+            // This generally occurs only at very high EEPs, where the masses are close together
+            if (dIsoMass > 0.0)
+            {
+                Star s;
+                vector<double> primaryMags, combinedMags, threadPost(nSystems, 0.0);
 
-//                 double dMass    = dIsoMass / isoIncrem;
-//                 double logdMass = __builtin_log (dMass);
+                double dMass    = dIsoMass / isoIncrem;
+                double logdMass = __builtin_log (dMass);
 
-//                 double cMass = isochrone.eeps[m].mass;
+                double cMass = isochrone.eeps[m].mass;
 
-//                 for (auto k = 0; k < isoIncrem; ++k)
-//                 {
-//                     double primaryMass = cMass + (k * dMass);
+                for (auto k = 0; k < isoIncrem; ++k)
+                {
+                    double primaryMass = cMass + (k * dMass);
 
-//                     if (primaryMass > agbTipMass)
-//                     {
-//                         primaryMass = agbTipMass;
+                    if (primaryMass >= agbTipMass)
+                    {
+                        primaryMass = agbTipMass;
 
-//                         // Kludgey way of exiting the for loop
-//                         // Only works if we don't use K below here
-//                         // Ensures we don't add the agbTip likelihood more than once
-//                         k = isoIncrem;
-//                     }
+                        // Kludgey way of exiting the for loop
+                        // Only works if we don't use K below here
+                        // Ensures we add the agbTip likelihood once and only once
+                        k = isoIncrem;
+                    }
 
-//                     const double logPrior    = clust.logPriorMass (primaryMass);
+                    const double logPrior    = clust.logPriorMass (primaryMass);
 
-//                     s.mass       = primaryMass;
-//                     primaryMags  = s.getMags(clust, evoModels, isochrone);
-//                     combinedMags = StellarSystem::deriveCombinedMags(clust, evoModels, isochrone, primaryMags, secondaryMags);
+                    s.mass       = primaryMass;
+                    primaryMags  = s.getMags(clust, evoModels, isochrone);
+                    combinedMags = StellarSystem::deriveCombinedMags(clust, evoModels, isochrone, primaryMags, secondaryMags, modIsParallax);
 
-//                     for (size_t s = 0; s < nSystems; ++s)
-//                     {
-//                         threadPost[s] += __builtin_exp(systems[s].logPost (clust, evoModels, isochrone, logPrior, combinedMags) + logdMass);
-//                     }
-//                 }
+                    for (size_t s = 0; s < nSystems; ++s)
+                    {
+                        threadPost[s] += __builtin_exp(systems[s].logPost (clust, evoModels, isochrone, logPrior, combinedMags) + logdMass);
+                    }
+                }
 
-//                 std::lock_guard<mutex> lk(logPostMutex);
+                std::lock_guard<mutex> lk(logPostMutex);
 
-//                 for (size_t s = 0; s < nSystems; ++s)
-//                     post[s] += threadPost[s];
-//             }
-//         });
-//     }
+                for (size_t s = 0; s < nSystems; ++s)
+                    post[s] += threadPost[s];
+            }
+        });
+    }
 
-//     return post;
-// }
+    return post;
+}
+
+#else
+
+// A non-parallel version of the reference version above.
+vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels, const Isochrone &isochrone, ThreadPool &pool, vector<StellarSystem> &systems, const bool modIsParallax, const int eepInterpolationPower)
+{
+    const int isoIncrem =
+        eepInterpolationPower == 0 ? 80 // Old default
+                                   : eepInterpolationPower > 0 ? 64 << eepInterpolationPower // 2^(5 + eepInterpolationPower)
+                                                               : 64 >> -eepInterpolationPower;
+
+    vector<double> secondaryMags;
+
+    {
+        Star s;
+        s.mass = 0.0;
+
+        secondaryMags = s.getMags(clust, evoModels, isochrone);
+    }
+
+    vector<double> post(systems.size(), 0.0);
+
+    {
+        auto agbTipMass = isochrone.agbTipMass();
+        auto isoSize    = isochrone.eeps.size();
+        auto nSystems   = systems.size();
+
+	for (size_t m = 0; m < isoSize - 1; ++m)
+        {
+            double dIsoMass = isochrone.eeps[m + 1].mass - isochrone.eeps[m].mass;
+
+            // In the event that we have an invalid range, skip that range
+            // This generally occurs only at very high EEPs, where the masses are close together
+            if (dIsoMass < 0.0) continue;
+
+	    Star s;
+	    vector<double> primaryMags, combinedMags;
+
+	    double dMass    = dIsoMass / isoIncrem;
+	    double logdMass = __builtin_log (dMass);
+
+	    double cMass = isochrone.eeps[m].mass;
+
+	    for (auto k = 0; k < isoIncrem; ++k)
+	    {
+		double primaryMass = cMass + (k * dMass);
+
+		if (primaryMass >= agbTipMass)
+		{
+		    primaryMass = agbTipMass;
+
+
+		    // Kludgey way of exiting the for loop
+		    // Only works if we don't use K below here
+		    // Ensures we add the agbTip likelihood once and only once
+		    k = isoIncrem;
+		}
+
+		const double logPrior = clust.logPriorMass (primaryMass);
+
+		s.mass       = primaryMass;
+		primaryMags  = s.getMags(clust, evoModels, isochrone);
+		combinedMags = StellarSystem::deriveCombinedMags(clust, evoModels, isochrone, primaryMags, secondaryMags, modIsParallax);
+
+		for (size_t s = 0; s < nSystems; ++s)
+		{
+		    post[s] += __builtin_exp(systems[s].logPost (clust, evoModels, isochrone, logPrior, combinedMags) + logdMass);
+		}
+            }
+        }
+    }
+
+    return post;
+}
+
+#endif

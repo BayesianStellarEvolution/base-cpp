@@ -633,7 +633,12 @@ tuple<double, vector<double>> MpiMcmcApplication::logPostStep(DualPopCluster &pr
     {
         if (settings.noBinaries)
         {
-            post[i] = margEvolveNoBinaries (propClust.clust[i], evoModels, *isochrone.at(i), pool, sysVars, sysVar2, sysObs, sSize, howManyFiltsAligned, howManyFilts, settings.modIsParallax, settings.eepInterpolationPower);
+#ifndef IS_ARM
+	  post[i] = margEvolveNoBinaries (propClust.clust[i], evoModels, *isochrone.at(i), pool, sysVars, sysVar2, sysObs, sSize, howManyFiltsAligned, howManyFilts, settings.modIsParallax, settings.eepInterpolationPower);
+
+#else
+	  post[i] = margEvolveNoBinaries (propClust.clust[i], evoModels, *isochrone.at(i), pool, systems, settings.modIsParallax, settings.eepInterpolationPower);
+#endif
         }
         else
         {

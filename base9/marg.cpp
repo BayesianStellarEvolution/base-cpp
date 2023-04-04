@@ -242,8 +242,7 @@ vector<double> margEvolveWithBinary (const Cluster &clust, vector<StellarSystem>
 
             // In the event that we have an invalid range, skip that range
             // This generally occurs only at very high EEPs, where the masses are close together
-            if (dIsoMass < 0.0)
-                continue;
+            if (dIsoMass < 0.0) continue;
 
             double dMass    = dIsoMass / isoIncrem;
 

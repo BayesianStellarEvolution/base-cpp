@@ -723,8 +723,12 @@ double MpiMcmcApplication::logPostStep(Cluster &propClust)
         vector<double> post;
 
         if (settings.noBinaries)
-            post = margEvolveNoBinaries (propClust, evoModels, *isochrone, pool, sysVars, sysVar2, sysObs, msSize, howManyFiltsAligned, howManyFilts, settings.modIsParallax, settings.eepInterpolationPower);
-        else
+#ifndef IS_ARM
+	    post = margEvolveNoBinaries (propClust, evoModels, *isochrone, pool, sysVars, sysVar2, sysObs, msSize, howManyFiltsAligned, howManyFilts, settings.modIsParallax, settings.eepInterpolationPower);
+#else
+	    post = margEvolveNoBinaries (propClust, evoModels, *isochrone, pool, msSystems, settings.modIsParallax, settings.eepInterpolationPower);
+#endif
+	else
             post = margEvolveWithBinary (propClust, msSystems, evoModels, *isochrone, pool, settings.modIsParallax, settings.eepInterpolationPower);
 
         for (size_t i = 0; i < msSize; ++i)

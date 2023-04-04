@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.10)
+cmake_minimum_required(VERSION 2.8.10...3.26.0)
 
 project(Base9 CXX C)
 
@@ -37,6 +37,13 @@ endif()
 option (USE_TCMALLOC "Enable linking to tcmalloc" OFF)
 option (BUILD_NONINTERACTIVE "Builds non-interactive applications for use on e.g., supercomputing clusters" OFF)
 
+#############
+# Processor #
+#############
+if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64")
+   set(IS_ARM ON)
+endif ()
+
 ##########################
 # Set up the config file #
 ##########################
@@ -53,7 +60,14 @@ if(CMAKE_CONFIGURATION_TYPES)
     FORCE)
 endif()
 
-set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -march=native -fstrict-aliasing -W -Wall -Wno-missing-braces -pedantic -pthread -DENABLE_SSE2 -msse3" CACHE STRING "" FORCE)
+if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64")
+  set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -fstrict-aliasing -W -Wall -Wno-missing-braces -pedantic -pthread" CACHE STRING "" FORCE)
+  set(CMAKE_CXX_FLAGS              "${CMAKE_CXX_FLAGS} -fstrict-aliasing -std=c++11 -W -Wall -Wno-missing-braces -pedantic -pthread -fno-rtti" CACHE STRING "" FORCE)
+else ()
+  set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -march=native -fstrict-aliasing -W -Wall -Wno-missing-braces -pedantic -pthread -DENABLE_SSE2 -msse3" CACHE STRING "" FORCE)
+  set(CMAKE_CXX_FLAGS              "${CMAKE_CXX_FLAGS} -march=native -fstrict-aliasing -std=c++11 -W -Wall -Wno-missing-braces -pedantic -pthread -fno-rtti -DENABLE_SSE2 -msse3" CACHE STRING "" FORCE)
+endif ()
+
 set(CMAKE_C_FLAGS_DEBUG          "-O0 -g" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_MINSIZEREL     "-Os -DNDEBUG" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_RELEASE        "-O3 -DNDEBUG" CACHE STRING "" FORCE)
@@ -61,7 +75,6 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -g" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_PROFILE        "-O0 -g -DNDEBUG" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_OPROFILE       "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
 
-set(CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} -march=native -fstrict-aliasing -std=c++11 -W -Wall -Wno-missing-braces -pedantic -pthread -fno-rtti -DENABLE_SSE2 -msse3" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG" CACHE STRING "" FORCE)
