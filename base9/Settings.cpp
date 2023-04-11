@@ -734,14 +734,8 @@ static void printUsage ()
     cerr << "\t--seed" << endl;
     cerr << "\t\tinitialize the random number generator\n" << endl;
 
-    cerr << "\t--msRgbModel" << endl;
-    cerr << "\t\t0 = Girardi" << endl;
-    cerr << "\t\t1 = Chaboyer-Dotter w/He sampling" << endl;
-    cerr << "\t\t2 = Original Yale-Yonsei (not currently supported)" << endl;
-    cerr << "\t\t3 = Old (jc2mass) DSED" << endl;
-    cerr << "\t\t4 = New DSED" << endl;
-    cerr << "\t\t5 = PARSEC" << endl;
-    cerr << "\t\t6 = New Yale-Yonsei models (2018)\n" << endl;
+    cerr << "\t--msModelFile" << endl;
+    cerr << "\t\tSpecify a model file relative to the --modelDirectory" << endl;
 
     cerr << "\t--ifmr" << endl;
     cerr << "\t\t0 = Weidemann" << endl;
