@@ -5,12 +5,7 @@
 
 #include "constants.hpp"
 #include "Model.hpp"
-#include "MsRgbModels/ChabMsModel.hpp"
-#include "MsRgbModels/OldDsedMsModel.hpp"
-#include "MsRgbModels/NewDsedMsModel.hpp"
-#include "MsRgbModels/ParsecMsModel.hpp"
-#include "MsRgbModels/GirardiMsModel.hpp"
-#include "MsRgbModels/NewYale.hpp"
+#include "MsRgbModels/GenericMsModel.hpp"
 #include "WdCoolingModels/AlthausWdModel.hpp"
 #include "WdCoolingModels/MontgomeryWdModel.hpp"
 #include "WdCoolingModels/NewMontgomeryWdModel.hpp"
@@ -29,30 +24,9 @@ using std::vector;
 
 namespace internal
 {
-    shared_ptr<MsRgbModel> createMsRgbModel(MsModel model)
+    shared_ptr<MsRgbModel> createMsRgbModel(string modelPath)
     {
-        switch (model)
-        {
-            case MsModel::GIRARDI:
-                return shared_ptr<GirardiMsModel>(new GirardiMsModel);
-            case MsModel::CHABHELIUM:
-                return shared_ptr<ChabMsModel>(new ChabMsModel);
-            case MsModel::YALE:
-                cerr << " Yale models are not currently supported." << endl;
-                exit(0);
-            case MsModel::OLD_DSED:
-                return shared_ptr<OldDsedMsModel>(new OldDsedMsModel);
-            case MsModel::NEW_DSED:
-                return shared_ptr<NewDsedMsModel>(new NewDsedMsModel);
-            case MsModel::PARSEC:
-                return shared_ptr<ParsecMsModel>(new ParsecMsModel);
-            case MsModel::NEW_YALE:
-                return shared_ptr<NewYaleMsModel>(new NewYaleMsModel);
-            default:
-                std::cerr << "***Error: No models found for main sequence evolution model " << static_cast<int>(model) << ".***" << std::endl;
-                std::cerr << "[Exiting...]\n" << std::endl;
-                exit(1);
-        }
+        return shared_ptr<MsRgbModel>(new GenericMsModel(modelPath));
     }
 
     shared_ptr<WdCoolingModel> createWdCoolingModel(WdModel model)
@@ -99,7 +73,7 @@ const Model makeModel(const Settings &s)
     if (s.verbose)
         cout << "Reading models..." << std::flush;
 
-    Model model( internal::createMsRgbModel(s.mainSequence.msRgbModel)
+    Model model( internal::createMsRgbModel(s.mainSequence.modelFile)
                , internal::createWdCoolingModel(s.whiteDwarf.wdModel)
                , internal::createWdAtmosphereModel(s.whiteDwarf.wdAtmosphereModel)
                , s.verbose);

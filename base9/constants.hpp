@@ -20,11 +20,6 @@ const double R_sun   = 6.96342e10;
 const int NPARAMS            = 9;
 
 // Define model sets
-//Main sequence evolution
-enum class MsModel {GIRARDI  = 0, CHABHELIUM = 1, YALE   = 2,
-                    OLD_DSED = 3, NEW_DSED   = 4, PARSEC = 5,
-                    NEW_YALE = 6};
-
 //IFMR
 const int WEIDEMANN  = 0;
 const int WILLIAMS   = 1;

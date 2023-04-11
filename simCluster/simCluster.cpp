@@ -123,11 +123,6 @@ int run(int argc, char *argv[])
 
     seed = settings.seed;
 
-    if (settings.mainSequence.msRgbModel == MsModel::YALE)
-        minMass = 0.4;
-    if (settings.mainSequence.msRgbModel == MsModel::OLD_DSED)
-        minMass = 0.25;
-
     strcpy (w_file, (settings.files.output + ".sim.out").c_str());
     if ((w_ptr = fopen (w_file, "w")) == NULL)
     {

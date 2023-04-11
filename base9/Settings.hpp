@@ -40,9 +40,11 @@ class Settings
     uint32_t seed = std::numeric_limits<uint32_t>::max();
     unsigned int threads = std::numeric_limits<int>::max();
 
+
     struct MainSequenceSettings
     {
-        MsModel msRgbModel;
+        // Path to MS model, relative to "models"
+        std::string modelFile = "";
     };
 
     struct WhiteDwarfSettings

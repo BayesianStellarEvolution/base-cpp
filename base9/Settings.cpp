@@ -76,7 +76,7 @@ void Settings::fromYaml (const string& yamlFile)
     Node scatterConfNode = getNode (configNode, "scatterCluster");
     Node sampleMassNode = getNode (configNode, "sampleMass");
 
-    mainSequence.msRgbModel = static_cast<MsModel>(getOrRequest <int>(mainSequenceNode, "msRgbModel"));
+    mainSequence.modelFile = getOrRequest <string>(mainSequenceNode, "modelFile");
 
     whiteDwarf.ifmr = getOrRequest <int>(whiteDwarfNode, "ifmr");
     whiteDwarf.wdModel = static_cast<WdModel>(getOrRequest <int>(whiteDwarfNode, "wdModel"));
@@ -209,7 +209,7 @@ void Settings::fromCLI (int argc, char **argv)
 
     static struct option long_options[] = {
         // These all have to be parsed
-        {"msRgbModel", required_argument, 0, 0xFE},
+        {"msModelFile", required_argument, 0, 0xFE},
         {"ifmr", required_argument, 0, 0xFD},
         {"wdModel", required_argument, 0, 0xFC},
         {"M_wd_up", required_argument, 0, 0xFA},
@@ -311,8 +311,7 @@ void Settings::fromCLI (int argc, char **argv)
                 break;
 
             case 0xFE:
-                istringstream (string (optarg)) >> i;
-                mainSequence.msRgbModel = static_cast<MsModel>(i);
+                mainSequence.modelFile = optarg;
                 break;
 
             case 0xFD:

@@ -9,9 +9,7 @@ general:
         scatterFile:    ""    # Empty string.  This is primarily a CLI option
 
     main_sequence:
-        msRgbModel:     3     # 0 = Girardi, 1 = Chaboyer-Dotter w/He sampling,
-                              # 2 = Yale-Yonsei (unsupported, 3 = Old (jc2mass) DSED,
-                              # 4 = New DSED, 5 = PARSEC, 6 = New Yale-Yonsei (2018)
+        modelFile:      "girardi/girardi.model"    # Path to model file relative to modelDirectory
 
     white_dwarfs:
         wdAtmosphereModel: 0     # 0 = Bergeron (2013), 1 = Bergeron (2019), 2 = Bergeron (2020)

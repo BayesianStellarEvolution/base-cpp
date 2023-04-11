@@ -24,6 +24,15 @@ using std::vector;
 
 const unsigned int maxIgnore = std::numeric_limits<char>::max();
 
+GenericMsModel::GenericMsModel(string modelFile)
+    : modelFile(modelFile)
+{}
+
+string GenericMsModel::getFileName (string modelPath) const
+{
+    return modelPath + modelFile;
+}
+
 void GenericMsModel::restrictToFilters(const vector<string>& filters, bool allowInvalid)
 {
     vector<int> indices;
