@@ -441,7 +441,7 @@ void MpiMcmcApplication::stage3Burnin(Chain<Cluster>& chain, std::function<void(
         cout << "\nStarting adaptive run... " << flush;
 
     // Make sure and pull the covariance matrix before resetting the chain
-    auto proposalFunc = std::bind(&MpiMcmcApplication::propClustCorrelated, this, _1, std::cref(ctrl), chain.makeCholeskyDecomp());
+    auto proposalFunc = std::bind(&MpiMcmcApplication::propClustCorrelated, this, _1, std::cref(ctrl), chain.makeCholeskyDecomp(settings.veryVerbose));
 
     chain.reset();
 
