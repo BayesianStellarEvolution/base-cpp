@@ -337,6 +337,80 @@ void MpiMcmcApplication::initChain()
     }
 }
 
+void MpiMcmcApplication::betaBinomialBurnin(Chain<Cluster>& chain, std::function<void(const Cluster&)>& checkPriors, std::function<double(Cluster&)>& logPostFunc)
+{
+    if ( settings.verbose )
+        cout << "\nRunning burnin..." << flush;
+
+    auto proposalFunc = std::bind(&MpiMcmcApplication::propClustBigSteps, this, _1, std::cref(ctrl), std::cref(stepSize));
+    chain.run(AdaptiveMcmcStage::FixedBurnin, proposalFunc, logPostFunc, checkPriors, settings.singlePopMcmc.adaptiveBigSteps);
+
+    if ( settings.verbose )
+        cout << " Complete (acceptanceRatio = " << chain.acceptanceRatio() << ")" << endl;
+
+    chain.reset(); // Reset the chain to forget this part of the burnin.
+//
+    auto descent = 10;
+
+    do
+    {
+        for (int i = descent; i >= 1; --i)
+        {
+            auto proposalFunc = std::bind(&MpiMcmcApplication::propClustIndep, this, _1, std::cref(ctrl), std::cref(stepSize), i * 2);
+            chain.run(AdaptiveMcmcStage::AdaptiveBurnin, proposalFunc, logPostFunc, checkPriors, 1);
+        }
+        {
+            auto proposalFunc = std::bind(&MpiMcmcApplication::propClustIndep, this, _1, std::cref(ctrl), std::cref(stepSize), 1);
+            chain.run(AdaptiveMcmcStage::AdaptiveBurnin, proposalFunc, logPostFunc, checkPriors, (10 - descent));
+        }
+        
+        auto dev = chain.stdDev(); // Try [2, 3] std. deviations?
+
+        if (chain.lowerCumulative() > (0.5 + dev))
+        {
+            auto scale = 0.5 / chain.lowerCumulative();
+
+            scaleSteps(stepSize, scale);
+
+            chain.reduceRatio();
+            chain.reset();
+        }
+        else if (chain.upperCumulative() > (0.5 + dev))
+        {
+            auto scale = 2 * chain.upperCumulative();
+
+            scaleSteps(stepSize, scale);
+
+            chain.reduceRatio();
+            chain.reset();
+        }
+
+        descent = descent > 0 ? descent - 1 : 0;
+    } while (chain.acceptableCumulative() < (0.50 + (2 * chain.stdDev()))); // Is this right?
+
+    if ( settings.veryVerbose )
+    {
+        auto distanceName = settings.modIsParallax ? "    parallax" : "     modulus";
+
+        const array<string, NPARAMS> paramNames = {  "      logAge",
+                                                     "           Y",
+                                                     "         FeH",
+                                                       distanceName,
+                                                     "  absorption",
+                                                     " carbonicity",
+                                                     "   IFMRconst",
+                                                     "     IFMRlin",
+                                                     "    IFMRquad"};
+        cout << "\nFinal Step Sizes" << endl;
+        for (size_t i = 0; i < NPARAMS; ++i)
+        {
+            cout << paramNames[i] << ": " << std::setw(11) << std::fixed << std::setprecision(9) << stepSize.at(i) << endl;
+        }
+
+        chain.reportAcceptanceRatio();
+    }
+}
+
 void MpiMcmcApplication::stage1Burnin(Chain<Cluster>& chain, std::function<void(const Cluster&)>& checkPriors, std::function<double(Cluster&)>& logPostFunc)
 {
     if ( settings.verbose )
@@ -616,6 +690,17 @@ void MpiMcmcApplication::scaleStepSizes (array<double, NPARAMS> &stepSize, doubl
     }
 }
 
+void MpiMcmcApplication::scaleSteps (array<double, NPARAMS> &stepSize, double factor)
+{
+    for (int p = 0; p < NPARAMS; p++)
+    {
+        if (ctrl.priorVar.at(p) > EPSILON)
+        {
+            stepSize.at(p) *= factor;
+        }
+    }
+}
+
 Cluster MpiMcmcApplication::propClustBigSteps (Cluster clust, struct ifmrMcmcControl const &ctrl, array<double, NPARAMS> const &stepSize)
 {
     return propClustIndep(clust, ctrl, stepSize, 25.0);
@@ -623,14 +708,13 @@ Cluster MpiMcmcApplication::propClustBigSteps (Cluster clust, struct ifmrMcmcCon
 
 Cluster MpiMcmcApplication::propClustIndep (Cluster clust, struct ifmrMcmcControl const &ctrl, array<double, NPARAMS> const &stepSize, double scale)
 {
-    /* DOF defined in densities.h */
     int p;
 
     for (p = 0; p < NPARAMS; p++)
     {
         if (ctrl.priorVar.at(p) > EPSILON)
         {
-            clust.setParam(p, clust.getParam(p) + sampleT (gen, scale * stepSize.at(p) * stepSize.at(p)));
+            clust.setParam(p, clust.getParam(p) + scale * stepSize.at(p) * sampleT (gen, 1.0));
         }
     }
 

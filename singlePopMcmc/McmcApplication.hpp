@@ -23,12 +23,27 @@ class McmcApplication
 
     virtual ~McmcApplication() {}
 
+    void reportAcceptanceRatio() const;
+
+    double lowerCumulative() const;
+    double upperCumulative() const;
+    double acceptableCumulative() const;
+    double stdDev() const;
+
     double acceptanceRatio() const { return double(accepted) / (accepted + rejected); }
 
     void resetRatio()
     {
         accepted = 0;
         rejected = 0;
+    }
+
+    void reduceRatio()
+    {
+        accepted /= 10;
+        rejected /= 10;
+
+        std::cout << accepted << ", " << rejected << std::endl;
     }
 
   protected:

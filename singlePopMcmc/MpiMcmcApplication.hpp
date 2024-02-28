@@ -32,6 +32,7 @@ class MpiMcmcApplication
     double logPostStep (Cluster &);
 
   private:
+    void scaleSteps (std::array<double, NPARAMS> &, double);
     void scaleStepSizes (std::array<double, NPARAMS> &, double);
     void allocateSSEMem();
 
@@ -39,6 +40,8 @@ class MpiMcmcApplication
     void verifyModelBounds();
     void initChain();
     void loadPreviousBurnin(std::string, Chain<Cluster>&);
+
+    void betaBinomialBurnin(Chain<Cluster>& chain, std::function<void(const Cluster&)>& checkPriors, std::function<double(Cluster&)>& logPostFunc);
     void stage1Burnin(Chain<Cluster>&, std::function<void(const Cluster&)>&, std::function<double(Cluster&)>&);
     void stage2Burnin(Chain<Cluster>&, std::function<void(const Cluster&)>&, std::function<double(Cluster&)>&);
     void stage3Burnin(Chain<Cluster>&, std::function<void(const Cluster&)>&, std::function<double(Cluster&)>&);
