@@ -35,9 +35,9 @@ class Chain : public McmcApplication
     SinglePopBackingStore &store;
     const bool modIsParallax;
 
+  public:
     double logPostCurr = -std::numeric_limits<double>::infinity();
 
-  public:
     Chain(uint32_t seed, std::array<double, NPARAMS> priorVar, T clust, SinglePopBackingStore &store, bool modIsParallax)
         : McmcApplication(seed), priorVar(priorVar), clust(clust), store(store), modIsParallax(modIsParallax)
     {}

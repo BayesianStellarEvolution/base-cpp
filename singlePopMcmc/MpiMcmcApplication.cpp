@@ -419,6 +419,14 @@ void MpiMcmcApplication::stage1Burnin(Chain<Cluster>& chain, std::function<void(
     auto proposalFunc = std::bind(&MpiMcmcApplication::propClustBigSteps, this, _1, std::cref(ctrl), std::cref(stepSize));
     chain.run(AdaptiveMcmcStage::FixedBurnin, proposalFunc, logPostFunc, checkPriors, settings.singlePopMcmc.adaptiveBigSteps);
 
+    bool isInfinity = chain.logPostCurr == -std::numeric_limits<double>::infinity();
+
+    if (isInfinity)
+    {
+        cerr << "Aborting chain: Unable to sample" << endl;
+        exit(-1);
+    }
+
     if ( settings.verbose )
         cout << " Complete (acceptanceRatio = " << chain.acceptanceRatio() << ")" << endl;
 
