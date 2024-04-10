@@ -1,15 +1,15 @@
 ## Local Package Installation
 1. Download the latest development archive
 2. Unzip the archive
-3. cd into base-develop
-4. Run ./build.sh
+3. `cd` into `base-develop/`
+4. Run ./build_local.sh
 5. Run R CMD build BASE9
 6. Run R CMD check BASE9
 
 ## Usage
 
-1. cd into BASE9.Rcheck
-2. Run R
+1. `cd` into `BASE9.Rcheck`
+2. Run `R`
 
 Now, from the R prompt:
 
