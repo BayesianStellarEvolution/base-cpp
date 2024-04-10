@@ -17,9 +17,9 @@ Now, from the R prompt:
 > install.packages("Rcpp") # If not already installed
 > library(BASE9, lib.loc=".")
 
-> initBase("models/", 0, 2, 1, 1) # Note that this needs to be the full path to your models directory, including trailing '/'
+> initBase("base-models-master/", "PARSEC/PARSEC_2022.model", 1, 1, FALSE) # Note that this needs to be the full path to your models directory, including trailing '/'
 > setClusterParameters(8.796, 0.07, 0.0, 0.09, 0.29, 0.5) # These are the reference base9.yaml parameters for the Hyades
-> evolve(2.64) # Returns an array of length 8 containing magnitudes for a 2.64 solar mass star (on the low-mass side of the WD models, for this set of cluster parameters).
+> evolve(2.64) # Returns an array containing magnitudes for a 2.64 solar mass star
 ```
 
 ## Interface
