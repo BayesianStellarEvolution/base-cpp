@@ -71,7 +71,7 @@ Sets the IFMR parameters.
 
 ### evolve
 ```C++
-std::vector<double> evolve (double massf1, double mass2)
+std::vector<double> evolve (double mass1, double mass2)
 ```
 ```R
 evolve <- function(mass1, mass2)
