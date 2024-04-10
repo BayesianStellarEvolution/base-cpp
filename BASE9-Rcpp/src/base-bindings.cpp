@@ -13,6 +13,8 @@
 
 namespace evil {
     Settings s;
+    bool distModIsParallax = false;
+
     bool initialized = false;
 
     class globals
@@ -62,7 +64,7 @@ namespace evil {
                 }
             }
 
-            evoModels.restrictFilters(filters);
+            evoModels.restrictFilters(filters, false);
 
 //            clust.AGBt_zmass = evoModels.mainSequenceEvol->deriveAgbTipMass(clust.feh, clust.yyy, clust.age);    // determine AGBt ZAMS mass, to find evol state
         }
@@ -122,11 +124,11 @@ double getAGBt_zmass()
 
 
 // [[Rcpp::export]]
-void initBase(std::string modelDir, int msModel, int wdModel, int ifmr)
+void initBase(std::string modelDir, std::string msModel, int wdModel, int ifmr, bool distModIsParallax)
 {
     evil::s.files.models = modelDir;
 
-    evil::s.mainSequence.msRgbModel = static_cast<MsModel>(msModel);
+    evil::s.mainSequence.modelFile = msModel;
 
     evil::s.whiteDwarf.ifmr = ifmr;
     evil::s.whiteDwarf.wdModel = static_cast<WdModel>(wdModel);
@@ -153,6 +155,8 @@ void initBase(std::string modelDir, int msModel, int wdModel, int ifmr)
     evil::s.cluster.maxMag = 30.0;
     evil::s.cluster.index = 2;
 
+    evil::distModIsParallax = distModIsParallax;
+
     evil::globals::getInstance();
 }
 
@@ -178,15 +182,16 @@ void setClusterParameters(double age, double feh, double distMod, double av, dou
 }
 
 // [[Rcpp::export]]
-void changeModels(int msModel, int wdModel, int ifmr)
+void changeModels(std::string msModel, int wdModel, int ifmr, bool distModIsParallax)
 {
     if (isInitialized())
     {
-        evil::s.mainSequence.msRgbModel = static_cast<MsModel>(msModel);
+        evil::s.mainSequence.modelFile = msModel;
 
         evil::s.whiteDwarf.ifmr = ifmr;
         evil::s.whiteDwarf.wdModel = static_cast<WdModel>(wdModel);
         evil::s.whiteDwarf.M_wd_up = 8.0;
+        evil::distModIsParallax = distModIsParallax;
 
         const auto evoModels = evil::globals::getInstance().evoModels;
         auto &clust = evil::globals::getInstance().clust;
@@ -231,7 +236,7 @@ std::vector<double> evolve (double mass1, double mass2)
             throw Rcpp::exception("Bounds error in evolve");
         }
 
-        return system.deriveCombinedMags(clust, evoModels, *isochrone);
+        return system.deriveCombinedMags(clust, evoModels, *isochrone, evil::distModIsParallax);
     }
     else
     {
