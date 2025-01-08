@@ -136,7 +136,12 @@ include_directories(base9)
 include_directories(yaml-cpp/include)
 
 # Libraries
-set(CMAKE_CXX_FLAGS "-fPIC -march=native -fstrict-aliasing -W -Wno-missing-braces -pedantic -pthread -fno-rtti -DENABLE_SSE2 -msse3")
+if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64")
+  set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -march=native -fstrict-aliasing -W -Wno-missing-braces -pedantic -pthread -fno-rtti")
+else ()
+  set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -march=native -fstrict-aliasing -W -Wno-missing-braces -pedantic -pthread -fno-rtti -DENABLE_SSE2 -msse3")
+endif ()
+
 option(YAML_CPP_BUILD_TESTS "Enable testing" OFF)
 option(YAML_CPP_BUILD_TOOLS "Enable parse tools" OFF)
 option(YAML_CPP_BUILD_CONTRIB "Enable contrib stuff in library" OFF)
