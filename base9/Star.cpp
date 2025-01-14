@@ -12,6 +12,7 @@
 #include "Model.hpp"
 #include "Star.hpp"
 
+using std::cerr;
 using std::ifstream;
 using std::string;
 using std::stringstream;
@@ -171,6 +172,9 @@ void StellarSystem::setMassRatio(double r)
 
 void StellarSystem::readCMD(const string &s, int filters)
 {
+    static int lineNumber = 1; // Photometry starts after the header line
+    lineNumber += 1;
+
     int status;
     double massRatio;
     vector<double> stdDevs;
@@ -178,12 +182,29 @@ void StellarSystem::readCMD(const string &s, int filters)
 
     stringstream in(s);
 
+    auto reportFail = [&s, &in](const string &reason)
+    {
+        if (in.fail())
+        {
+            std::cerr << "\n\nPhotometry Error - Failed to load "
+                      << reason
+                      << ":\n\n" << lineNumber << ":\t" << s
+                      << std::endl;
+
+            exit(1);
+        }
+    };
+
+
     in >> id;
+    reportFail("id");
 
     for (int i = 0; i < filters; i++)
     {
         double t;
         in >> t;
+
+        reportFail("filter");
 
         obsPhot.push_back(t);
     }
@@ -193,14 +214,26 @@ void StellarSystem::readCMD(const string &s, int filters)
         double sigma;
         in >> sigma;
 
+        reportFail("std.deviation");
+
         stdDevs.push_back(sigma);
     }
 
-    in >> primary.mass
-       >> massRatio
-       >> status
-       >> clustStarPriorDens
-       >> useDuringBurnIn;
+    in >> primary.mass;
+    reportFail("mass");
+
+    in >> massRatio;
+    reportFail("mass ratio");
+
+    in >> status;
+    reportFail("status");
+
+    in >> clustStarPriorDens;
+    reportFail("prior density");
+
+    in >> useDuringBurnIn;
+    reportFail("use during burn-in");
+
 
     setSystemParams(id, obsPhot, stdDevs, primary.mass, massRatio, status,
                     clustStarPriorDens, useDuringBurnIn);
