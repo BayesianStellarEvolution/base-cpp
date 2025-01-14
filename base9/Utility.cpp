@@ -84,6 +84,34 @@ namespace base
             {
                 systems.emplace_back(line, filterNames.size());
 
+                if (settings.veryVerbose)
+                {
+                    auto s = systems.back();
+
+                    std::cerr << "Star: " << s.id << "\n"
+                              << "\tmass: " << s.primary.mass << "\n"
+                              << "\tmassRatio: " << s.getMassRatio() << "\n"
+                              << "\tstatus: " << s.observedStatus << "\n"
+                              << "\tmembership: " << s.clustStarPriorDens << "\n"
+                              << "\tuse during burn-in: " << s.useDuringBurnIn << "\n";
+
+                    std::cerr << "\n\tPhotometry:";
+
+                    for (auto v : s.obsPhot)
+                    {
+                        std::cerr << ' ' << v;
+                    }
+
+                    std::cerr << "\n\tSigmas:";
+
+                    for (auto v : s.variance)
+                    {
+                        std::cerr << ' ' << sqrt(v);
+                    }
+                
+                    std::cerr << "\n\n";
+                }
+
                 for (size_t i = 0; i < filterNames.size(); ++i)
                 {
                     if (systems.back().obsPhot.at(i) < filterPriorMin.at(i))
