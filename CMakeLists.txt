@@ -82,7 +82,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_PROFILE        "-O0 -g -DNDEBUG" CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_OPROFILE       "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
 
-set(CMAKE_EXE_LINKER_FLAGS "-pthread -ldl" CACHE STRING "" FORCE)
+set(CMAKE_EXE_LINKER_FLAGS "-pthread" CACHE STRING "" FORCE)
 
 set(CMAKE_EXE_LINKER_FLAGS_PROFILE    "-L/usr/local/lib -lprofiler")
 set(CMAKE_SHARED_LINKER_FLAGS_PROFILE "-L/usr/local/lib -lprofiler")
@@ -134,13 +134,6 @@ MARK_AS_ADVANCED(
 # Additional include and link directories
 include_directories(base9)
 include_directories(yaml-cpp/include)
-
-# Libraries
-if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64")
-  set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -march=native -fstrict-aliasing -W -Wno-missing-braces -pedantic -pthread -fno-rtti")
-else ()
-  set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -march=native -fstrict-aliasing -W -Wno-missing-braces -pedantic -pthread -fno-rtti -DENABLE_SSE2 -msse3")
-endif ()
 
 option(YAML_CPP_BUILD_TESTS "Enable testing" OFF)
 option(YAML_CPP_BUILD_TOOLS "Enable parse tools" OFF)
