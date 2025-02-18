@@ -39,11 +39,21 @@ unsigned long seed = 0;
 int run(int argc, char *argv[])
 {
     int i, nStars;//, nBrownDwarfs;
-    double fractionBinary, massTotal, fractionDB, tempMod, minV, maxV, minMass = 0.15;
+    double fractionBinary, massTotal, tempMod, minV, maxV, minMass = 0.15;
     char w_file[100];
     FILE *w_ptr;
     Cluster theCluster;
     StellarSystem theStar;
+
+// Fraction DB
+//
+// At time of writing, fractionDB is calculated in the code, but never used. It
+// generates a warning, so it can't stay, but I don't want it to be lost if
+// needed in future. The three lines referencing this variable are commented
+// following here and below.
+ 
+//    double fractionDB;
+
 
     double drawFromIMF (std::mt19937&);
     void updateCount (const StellarSystem&, int cmpnt);
@@ -110,7 +120,7 @@ int run(int argc, char *argv[])
 
     theCluster.setM_wd_up(settings.whiteDwarf.M_wd_up);
     fractionBinary = settings.simCluster.percentBinary;
-    fractionDB = settings.simCluster.percentDB;
+//    fractionDB = settings.simCluster.percentDB;
     theCluster.mod = settings.cluster.starting.distMod;
     theCluster.abs = settings.cluster.starting.Av;
     theCluster.age = settings.cluster.starting.logAge;
@@ -119,7 +129,7 @@ int run(int argc, char *argv[])
     theCluster.carbonicity = settings.cluster.starting.carbonicity;
 
     fractionBinary /= 100.;     // input as percentages, use as fractions
-    fractionDB /= 100.;
+//    fractionDB /= 100.;
 
     seed = settings.seed;
 

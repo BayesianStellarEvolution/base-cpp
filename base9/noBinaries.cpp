@@ -427,7 +427,7 @@ vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels
 #else
 
 // A non-parallel version of the reference version above.
-vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels, const Isochrone &isochrone, ThreadPool &pool, vector<StellarSystem> &systems, const bool modIsParallax, const int eepInterpolationPower)
+vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels, const Isochrone &isochrone, ThreadPool&, vector<StellarSystem> &systems, const bool modIsParallax, const int eepInterpolationPower)
 {
     const int isoIncrem =
         eepInterpolationPower == 0 ? 80 // Old default

@@ -324,7 +324,6 @@ int main (int argc, char *argv[])
         }
 
         /************ sample WD masses for different parameters ************/
-        int iWD = 0;
         int im;
         double wdPostSum, maxWDLogPost, mass1;
         double postClusterStar;
@@ -421,8 +420,6 @@ int main (int argc, char *argv[])
                     records.push_back({iteration, star.id,
                                        mass1, membership, precLogAge, coolingAge, logTeff, logg});
                 }
-
-                iWD++;
             }
         }
 

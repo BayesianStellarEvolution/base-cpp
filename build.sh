@@ -29,7 +29,7 @@ git checkout yaml-cpp-0.6.2
 
 TMPFILE=`mktemp`
 cp src/regex_yaml.h "${TMPFILE}"
-echo '#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"' > src/regex_yaml.h
+#echo '#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"' > src/regex_yaml.h
 cat "${TMPFILE}" >> src/regex_yaml.h
 rm "${TMPFILE}"
 cd ..

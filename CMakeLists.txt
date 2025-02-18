@@ -40,7 +40,7 @@ option (BUILD_NONINTERACTIVE "Builds non-interactive applications for use on e.g
 #############
 # Processor #
 #############
-if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64")
+if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64" OR "${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "aarch64")
    set(IS_ARM ON)
 endif ()
 
@@ -60,7 +60,7 @@ if(CMAKE_CONFIGURATION_TYPES)
     FORCE)
 endif()
 
-if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64")
+if ("${IS_ARM}")
   set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} -fstrict-aliasing -W -Wall -Wno-missing-braces -pedantic -pthread" CACHE STRING "" FORCE)
   set(CMAKE_CXX_FLAGS              "${CMAKE_CXX_FLAGS} -fstrict-aliasing -std=c++11 -W -Wall -Wno-missing-braces -pedantic -pthread -fno-rtti" CACHE STRING "" FORCE)
 else ()
