@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8...3.26.0)
 
 if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64" OR
-    "${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "aarm64")
+    "${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "aarch64")
   file(GLOB BASE9_FILES *.cpp *.hpp MsRgbModels/*.cpp MsRgbModels/*.hpp WdCoolingModels/*.cpp WdCoolingModels/*.hpp WdAtmosphereModels/*.cpp WdAtmosphereModels/*.hpp IO/*.cpp IO/*.hpp)
 else ()
   file(GLOB BASE9_FILES *.cpp *.hpp MsRgbModels/*.cpp MsRgbModels/*.hpp WdCoolingModels/*.cpp WdCoolingModels/*.hpp WdAtmosphereModels/*.cpp WdAtmosphereModels/*.hpp IO/*.cpp IO/*.hpp sleef/*.c sleef/*.h)
