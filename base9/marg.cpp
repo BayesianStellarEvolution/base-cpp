@@ -97,7 +97,7 @@ static void calcPost (const double dMass, const Cluster &clust, vector<StellarSy
 
             for (size_t f = 0; f < obsSize; ++f)
             {
-                if (system.variance[f] >= 0)
+                if (system.variance[f] > EPS)
                 {
                     // Optimizations(?)
                     double obsPhot = system.obsPhot[f];               // Reduces array dereference penalty
