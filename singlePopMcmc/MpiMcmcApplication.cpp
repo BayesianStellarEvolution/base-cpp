@@ -605,6 +605,9 @@ int MpiMcmcApplication::run()
 
     fieldStarLikelihood->save({fsLike});
 
+    // For testing, exit after model and photometry are loaded
+    if (settings.exitAfterLoad) { exit(0); }
+
     // Burnin
     allocateSSEMem();
     initChain();

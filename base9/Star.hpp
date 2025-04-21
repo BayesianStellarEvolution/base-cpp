@@ -39,16 +39,16 @@ class StellarSystem
     StellarSystem()
     {;}
 
-    StellarSystem(const std::string &s, int filters)
+    StellarSystem(const std::string &s, int filters, const Settings &settings)
         : StellarSystem()
     {
-        readCMD(s, filters);
+        readCMD(s, filters, settings);
     }
 
     ~StellarSystem() {;}
 
     // Functions
-    void readCMD(const std::string&, int);
+    void readCMD(const std::string&, int, const Settings&);
     void setSystemParams(std::string, std::vector<double>, std::vector<double>,
                                         double, double, int, double, bool);
 

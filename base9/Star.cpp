@@ -170,7 +170,7 @@ void StellarSystem::setMassRatio(double r)
     secondary.mass = primary.mass * r;
 }
 
-void StellarSystem::readCMD(const string &s, int filters)
+void StellarSystem::readCMD(const string &s, int filters, const Settings &settings)
 {
     static int lineNumber = 1; // Photometry starts after the header line
     lineNumber += 1;
@@ -182,57 +182,93 @@ void StellarSystem::readCMD(const string &s, int filters)
 
     stringstream in(s);
 
-    auto reportFail = [&s, &in](const string &reason)
+    auto photometryWarning = [&s](const string &reason)
+    {
+        std::cerr << "\n\nPhotometry Warning - "
+                  << reason
+                  << ":\n\n" << lineNumber << ":\t" << s
+                  << std::endl;
+    };
+
+    auto photometryError = [&s](const string &reason)
+    {
+        std::cerr << "\n\nPhotometry Error - Failed to load "
+                  << reason
+                  << ":\n\n" << lineNumber << ":\t" << s
+                  << std::endl;
+
+        exit(1);
+    };
+
+    auto photometryLoadError = [&photometryError](const string &reason)
+    {
+        photometryError("Failed to load " + reason);
+    };
+
+    auto reportStreamFailuresAt = [&photometryLoadError, &in](const string &reason)
     {
         if (in.fail())
         {
-            std::cerr << "\n\nPhotometry Error - Failed to load "
-                      << reason
-                      << ":\n\n" << lineNumber << ":\t" << s
-                      << std::endl;
-
-            exit(1);
+            photometryLoadError(reason);
         }
     };
 
 
     in >> id;
-    reportFail("id");
+    reportStreamFailuresAt("id");
 
     for (int i = 0; i < filters; i++)
     {
         double t;
         in >> t;
 
-        reportFail("filter");
+        reportStreamFailuresAt("filter");
 
         obsPhot.push_back(t);
     }
+
+    bool warnedOnce = false;
 
     for (int i = 0; i < filters; i++)
     {
         double sigma;
         in >> sigma;
 
-        reportFail("std.deviation");
+        reportStreamFailuresAt("std.deviation");
+
+        if (!settings.allowNegativeSigma && sigma < 0)
+        {
+            photometryError("Enable negative sigma values with '--allowNegativeSigma'");
+        }
+        else if (sigma == 0)
+        {
+            photometryError("0 is an invalid value for photometric standard deviations");
+        }
+        else if (!settings.ignoreLowSigma && (sigma > 0) && (sigma < 0.01))  // 0.01 mag warning limit arbitrary
+        {
+            if (!warnedOnce) {
+                photometryWarning("Low sigma");
+                warnedOnce = true;
+            }
+        }
 
         stdDevs.push_back(sigma);
     }
 
     in >> primary.mass;
-    reportFail("mass");
+    reportStreamFailuresAt("mass");
 
     in >> massRatio;
-    reportFail("mass ratio");
+    reportStreamFailuresAt("mass ratio");
 
     in >> status;
-    reportFail("status");
+    reportStreamFailuresAt("status");
 
     in >> clustStarPriorDens;
-    reportFail("prior density");
+    reportStreamFailuresAt("prior density");
 
     in >> useDuringBurnIn;
-    reportFail("use during burn-in");
+    reportStreamFailuresAt("use during burn-in");
 
 
     setSystemParams(id, obsPhot, stdDevs, primary.mass, massRatio, status,

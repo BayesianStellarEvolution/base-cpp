@@ -272,10 +272,15 @@ void Settings::fromCLI (int argc, char **argv)
         {"noBinaries", no_argument, 0, 0xAE},
         {"overrideBounds", no_argument, 0, 0xAD},
         {"noWDs", no_argument, 0, 0xAC},
-        {"development", no_argument, 0, 0xAB},
+        {"exitAfterLoad", no_argument, 0, 0xAB},
         {"details", no_argument, 0, 0xAA},
         {"onlyWDs", no_argument, 0, 0x9F},
         {"allowInvalidModels", no_argument, 0, 0x9E},
+
+        {"exitAfterLoad", no_argument, 0, 0x9D},
+        {"ignoreLowSigma", no_argument, 0, 0x9C},
+        {"allowNegativeSigma", no_argument, 0, 0x9B},
+
         {"eepInterpolationPower", required_argument, 0, 0xBC},
         {"wdInterpolationPower", required_argument, 0, 0xBB},
         {"includeBurnin", no_argument, 0, 0xBA},
@@ -527,7 +532,7 @@ void Settings::fromCLI (int argc, char **argv)
                 break;
 
             case 0xAB:
-                development = true;
+                exitAfterLoad = true;
                 break;
 
             case 0xAA:
@@ -540,6 +545,18 @@ void Settings::fromCLI (int argc, char **argv)
 
             case 0x9E:
                 allowInvalidModels = true;
+                break;
+
+            case 0x9D:
+                exitAfterLoad = true;
+                break;
+
+            case 0x9C:
+                ignoreLowSigma = true;
+                break;
+
+            case 0x9B:
+                allowNegativeSigma = true;
                 break;
 
             // distMod and parallax have to be handled with special care.
@@ -876,7 +893,7 @@ static void printUsage ()
     cerr << "\t\tSpecifies distance values in parallax. Can not be combined\n";
     cerr << "\t\twith any DistMod flag. Must all be specified simultaneously." << endl;
 
-    cerr << "\nPost-9.5.0 flags" << endl;
+    cerr << "\n9.6.0 flags" << endl;
     cerr << "\t--onlyWDs" << endl;
     cerr << "\t\tRestrict WD numerical integration to only occur above the AGB tip. Primarily useful when the MS model doesn't contain the filters you want in a WD-only run." << endl;
 
@@ -913,6 +930,16 @@ static void printUsage ()
     cerr << "\n\t--startWithBurnin <filename>" << endl;
     cerr << "\t\tStarts the run with the Stage 2 burnin output from a standard run of BASE-9 or" << endl;
     cerr << "\t\ta run using the 'stopAfterBurnin' flag." << endl;
+
+    cerr << "\nPost-9.6.0 flags" << endl;
+    cerr << "\n\t--exitAfterLoad" << endl;
+    cerr << "\t\tDev flag for model and photometry debugging" << endl;
+
+    cerr << "\n\t--ignoreLowSigma" << endl;
+    cerr << "\t\tTurn off warning about sigmas in photometry less than 0.01" << endl;
+
+    cerr << "\n\t--allowNegativeSigma" << endl;
+    cerr << "\t\tAllow negative sigmas in photometry, indicating an ignored filter for that star" << endl;
 }
 
 static void printVersion()

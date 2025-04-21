@@ -28,12 +28,16 @@ class Settings
     bool noBinaries = false;
     bool overrideBounds = false;
 
-    bool development = false;
+    bool exitAfterLoad = false; // Dev exit to support testing
+
     bool details = false;
     bool verbose = false;
     bool veryVerbose = false;
 
     bool includeBurnin = false;
+
+    bool ignoreLowSigma = false;     // Disables low sigma warning
+    bool allowNegativeSigma = false; // Enables disabling individual photometric observations in the photometry file
 
     bool stopAfterBurnin = false;
     std::string startWithBurnin = "";

@@ -83,7 +83,7 @@ namespace base
 
             while (getline(fin, line))
             {
-                systems.emplace_back(line, filterNames.size());
+                systems.emplace_back(line, filterNames.size(), settings);
 
                 if (settings.veryVerbose)
                 {
