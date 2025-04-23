@@ -85,11 +85,24 @@ namespace base
             {
                 systems.emplace_back(line, filterNames.size(), settings);
 
+                auto s = systems.back();
+
+                // Exclude any star in settings.exclude
+                //
+                // Include all remaining stars if settings.include is empty; otherwise,
+                //   Exclude all remaining stars not found in settings.include.
+                if (( !settings.exclude.empty() && 
+                      std::find(settings.exclude.begin(), settings.exclude.end(), s.id) != settings.exclude.end()) ||
+                    ( !settings.include.empty() &&
+                      std::find(settings.include.begin(), settings.include.end(), s.id) == settings.include.end()))
+                {
+                    systems.pop_back();
+                    continue;
+                }
+
                 if (settings.veryVerbose)
                 {
-                    auto s = systems.back();
-
-                    std::cerr << "Star: " << s.id << "\n"
+                    std::cerr << "Star: '" << s.id << "'\n"
                               << "\tmass: " << s.primary.mass << "\n"
                               << "\tmassRatio: " << s.getMassRatio() << "\n"
                               << "\tstatus: " << s.observedStatus << "\n"
@@ -139,6 +152,26 @@ namespace base
                 {
                     throw std::out_of_range(string(e.what()) + " while loading photometry. Check your filter index.");
                 }
+            }
+
+            if (  settings.verbose &&
+                (!settings.include.empty() || !settings.exclude.empty()))
+            {
+                std::cerr << "Loaded stars: ";
+
+
+                for (size_t i = 0; i < systems.size(); ++i)
+                {
+                    std::cerr << "'" << systems[i].id << "'";
+
+                    if ((i + 1) < systems.size())
+                    {
+                        std::cerr << ", ";
+                    }
+                }
+
+                std::cerr << std::endl;
+
             }
 
             return std::make_pair(filterNames, systems);

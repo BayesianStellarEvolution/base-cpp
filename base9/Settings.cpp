@@ -196,6 +196,16 @@ void Settings::fromYaml (const string& yamlFile)
     files.models = getOrRequest <string>(filesNode, "modelDirectory");
 }
 
+void commaSeparated(string toParse, std::vector<std::string> &vec)
+{
+    std::stringstream ss(toParse);
+    std::string lid;
+
+    while (std::getline(ss, lid, ',')) {
+        vec.push_back(lid);
+    }
+}
+
 void Settings::fromCLI (int argc, char **argv)
 {
     char **t_argv = new char*[argc];
@@ -287,6 +297,9 @@ void Settings::fromCLI (int argc, char **argv)
         {"veryVerbose", no_argument, 0, 0xB9},
         {"stopAfterBurnin", no_argument, 0, 0xB8},
         {"startWithBurnin", required_argument, 0, 0xB7},
+
+        {"include", required_argument, 0, 0x9A},
+        {"exclude", required_argument, 0, 0x99},
         {0, 0, 0, 0}
     };
 
@@ -624,6 +637,16 @@ void Settings::fromCLI (int argc, char **argv)
                 istringstream (string (optarg)) >> startWithBurnin;
                 break;
 
+            case 0x9A:
+                commaSeparated(string(optarg), include);
+
+                break;
+
+            case 0x99:
+                commaSeparated(string(optarg), exclude);
+
+                break;
+
             case '?':
                 // getopt_long already printed an error message.
                 printUsage ();
@@ -940,6 +963,23 @@ static void printUsage ()
 
     cerr << "\n\t--allowNegativeSigma" << endl;
     cerr << "\t\tAllow negative sigmas in photometry, indicating an ignored filter for that star" << endl;
+
+    cerr << "\n\t--include LIST and --exclude LIST" << endl;
+    cerr << "\t\tFilters the input photometry. LIST should be a comma-separated of IDs exactly as they are in the photometry (excluding leading spaces," << endl;
+    cerr << "\t\tsee the output with `--veryVerbose --exitAfterLoad` flags if you are unsure)." << endl;
+
+    cerr << "\n\t\tInvalid items in LIST (i.e., those not the photometry file) are ignored silently. The list of filtered IDs is printed if --verbose is set." << endl;
+
+    cerr << "\n\t\tBehavior:" << endl;
+    cerr << "\t\t\t--include excludes all stars but those listed." << endl;
+    cerr << "\t\t\t--exclude includes all but those listed." << endl;
+    cerr << "\t\t\t--include and --exclude together excludes all stars except those included in --include and not excluded in --exclude (i.e., --exclude trumps)." << endl;    
+
+    cerr << "\n\t\tExample:" << endl;
+    cerr << "\t\t\t$ ./bin/singlePopMcmc --photFile Hyades.UBV.phot --verbose --exitAfterLoad --include \"vB043,HZ4,VR7\" --exclude \"HZ4\"" << endl;
+    cerr << "\n\t\t\tOutput includes:" << endl;
+    cerr << "\t\t\t\tLoaded stars: 'vB043', 'VR7'" << endl;
+
 }
 
 static void printVersion()
