@@ -954,7 +954,7 @@ static void printUsage ()
     cerr << "\t\tStarts the run with the Stage 2 burnin output from a standard run of BASE-9 or" << endl;
     cerr << "\t\ta run using the 'stopAfterBurnin' flag." << endl;
 
-    cerr << "\nPost-9.6.0 flags" << endl;
+    cerr << "\n9.6.1 flags" << endl;
     cerr << "\n\t--exitAfterLoad" << endl;
     cerr << "\t\tDev flag for model and photometry debugging" << endl;
 
