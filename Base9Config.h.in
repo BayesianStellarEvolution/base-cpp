@@ -2,7 +2,7 @@
 #define BASE9_CONFIG_H
 
 // the configured options and settings for Tutorial
-#define Base9_VERSION "9.6.0-release"
+#define Base9_VERSION "9.6.1-release"
 
 #cmakedefine BUILD_NONINTERACTIVE
 
