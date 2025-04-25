@@ -976,7 +976,7 @@ static void printUsage ()
     cerr << "\t\t\t--include and --exclude together excludes all stars except those included in --include and not excluded in --exclude (i.e., --exclude trumps)." << endl;    
 
     cerr << "\n\t\tExample:" << endl;
-    cerr << "\t\t\t$ ./bin/singlePopMcmc --photFile Hyades.UBV.phot --verbose --exitAfterLoad --include \"vB043,HZ4,VR7\" --exclude \"HZ4\"" << endl;
+    cerr << "\t\t\t$ ./bin/singlePopMcmc --photFile Hyades.UBV.phot --verbose --include \"vB043,HZ4,VR7\" --exclude \"HZ4\"" << endl;
     cerr << "\n\t\t\tOutput includes:" << endl;
     cerr << "\t\t\t\tLoaded stars: 'vB043', 'VR7'" << endl;
 
