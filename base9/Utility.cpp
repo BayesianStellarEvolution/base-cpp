@@ -154,6 +154,13 @@ namespace base
                 }
             }
 
+            if ((systems.size() == 1) && (systems.at(0).clustStarPriorDens < 1))
+            {
+                systems[0].clustStarPriorDens = 1.0;
+
+                std::cerr << "\n***Warning: Single star with cluster membership != 1.0 (set automatically for this run)" << std::endl;
+            }
+
             if (  settings.verbose &&
                 (!settings.include.empty() || !settings.exclude.empty()))
             {
@@ -204,9 +211,9 @@ namespace base
             std::ifstream parsFile;
             parsFile.open(filename);
 
-            if (!rData)
+            if (!parsFile)
             {
-                cerr << "***Error: Result file " << settings.files.phot << " was not found.***" << endl;
+                cerr << "***Error: Result file " << filename << " was not found.***" << endl;
                 cerr << "(Exiting...)" << endl;
                 exit (1);
             }
