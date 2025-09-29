@@ -323,7 +323,7 @@ void Application::run()
         if (!rData)
         {
             cerr << "***Error: Photometry file " << settings.files.phot << " was not found.***" << endl;
-            cerr << ".at(Exiting...)" << endl;
+            cerr << "(Exiting...)" << endl;
             exit (1);
         }
 

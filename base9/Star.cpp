@@ -236,7 +236,7 @@ void StellarSystem::readCMD(const string &s, int filters, const Settings &settin
 
         reportStreamFailuresAt("std.deviation");
 
-        if (!settings.allowNegativeSigma && sigma < 0)
+        if (!settings.allowNegativeSigma && (sigma < 0))
         {
             photometryError("Enable negative sigma values with '--allowNegativeSigma'");
         }
@@ -247,7 +247,7 @@ void StellarSystem::readCMD(const string &s, int filters, const Settings &settin
         else if (!settings.ignoreLowSigma && (sigma > 0) && (sigma < 0.01))  // 0.01 mag warning limit arbitrary
         {
             if (!warnedOnce) {
-                photometryWarning("Low sigma");
+                photometryWarning("Low sigma (< 0.01). '--ignoreLowSigma' to silence.");
                 warnedOnce = true;
             }
         }

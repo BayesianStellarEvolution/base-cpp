@@ -204,6 +204,13 @@ namespace base
             std::ifstream parsFile;
             parsFile.open(filename);
 
+            if (!rData)
+            {
+                cerr << "***Error: Result file " << settings.files.phot << " was not found.***" << endl;
+                cerr << "(Exiting...)" << endl;
+                exit (1);
+            }
+
             bool hasY, hasCarbonicity;
 
             getline(parsFile, line); // Parse header
