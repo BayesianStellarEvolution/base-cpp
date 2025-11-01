@@ -21,18 +21,8 @@ cd "${BASE}"
 if [ ! -e "yaml-cpp/CMakeLists.txt" ]; then
     # Manually clone yaml-cpp, removing the directory first
     rm -r yaml-cpp
-    git clone --depth=1 --branch=yaml-cpp-0.6.2 https://github.com/jbeder/yaml-cpp.git
+    git clone --depth=1 https://github.com/BayesianStellarEvolution/yaml-cpp.git
 fi
-
-cd yaml-cpp
-git checkout yaml-cpp-0.6.2
-
-TMPFILE=`mktemp`
-cp src/regex_yaml.h "${TMPFILE}"
-#echo '#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"' > src/regex_yaml.h
-cat "${TMPFILE}" >> src/regex_yaml.h
-rm "${TMPFILE}"
-cd ..
 
 cd ./BUILD
 if [ "$PREFIX" ]; then
