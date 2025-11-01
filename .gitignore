@@ -31,3 +31,4 @@ contrib/BUILD/*
 .dir-locals.el
 
 !.keep
+.DS_Store
