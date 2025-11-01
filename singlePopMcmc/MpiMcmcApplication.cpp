@@ -530,7 +530,9 @@ void MpiMcmcApplication::stage3Burnin(Chain<Cluster>& chain, std::function<void(
     chain.run(AdaptiveMcmcStage::AdaptiveMainRun, proposalFunc, logPostFunc, checkPriors, settings.singlePopMcmc.stage3Iter);
 
     if ( settings.verbose )
+    {
         cout << " Preliminary acceptanceRatio = " << chain.acceptanceRatio() << endl;
+    }
 
     if ( settings.veryVerbose )
     {
@@ -649,7 +651,9 @@ int MpiMcmcApplication::run()
         }
     }
     else
+    {
         cout << "Ended after burnin due to `--stopAfterBurnin`" << endl;
+    }
 
     return 0;
 }
