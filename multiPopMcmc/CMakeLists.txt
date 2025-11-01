@@ -6,7 +6,7 @@ include_directories( ${YAML_CPP_INCLUDE_DIRS} "/usr/local/include" )
 
 add_executable(multiPopMcmc ${MULTIPOPMCMC_FILES})
 
-target_link_libraries(multiPopMcmc base9 m ${GSL_LOC} ${GSLCBLAS_LOC} yaml-cpp)
+target_link_libraries(multiPopMcmc base9 m GSL::gsl GSL::gslcblas yaml-cpp)
 
 install(TARGETS multiPopMcmc
         DESTINATION bin)

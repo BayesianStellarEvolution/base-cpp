@@ -2,16 +2,16 @@ cmake_minimum_required(VERSION 2.8.10...3.26.0)
 
 project(Base9 CXX C)
 
-list( APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" )
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" )
 
 set(CMAKE_REQUIRED_INCLUDES "/usr/local/include")
 
 include(CheckIncludeFiles)
-
 check_include_files (math.h HAS_MATH)
-check_include_files ("gsl/gsl_blas.h;gsl/gsl_math.h;gsl/gsl_eigen.h;gsl/gsl_statistics.h;gsl/gsl_linalg.h;gsl/gsl_spline.h;gsl/gsl_errno.h" HAS_GSL_BLAS)
 check_include_files (getopt.h HAS_GETOPT)
 check_include_files (unistd.h HAS_UNISTD)
+
+find_package(GSL REQUIRED)
 
 include(CheckFunctionExists)
 set(CMAKE_REQUIRED_LIBRARIES "m")
@@ -119,18 +119,6 @@ MARK_AS_ADVANCED(
 #####################################
 # Project specific code starts here #
 #####################################
-find_library(GSL_LOC
-  gsl
-  ENV LD_LIBRARY_PATH)
-
-find_library(GSLCBLAS_LOC
-  gslcblas
-  ENV LD_LIBRARY_PATH)
-
-MARK_AS_ADVANCED(
-  GSL_LOC
-  GSLCBLAS_LOC)
-
 # Additional include and link directories
 include_directories(base9)
 include_directories(yaml-cpp/include)
