@@ -6,6 +6,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <algorithm>
 
 #include "Utility.hpp"
 
