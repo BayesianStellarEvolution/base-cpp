@@ -173,8 +173,10 @@ static double mirror(double var)
 // std::function<T(T)> propose
 StellarSystem propose(std::mt19937 &gen, double massStepSize, double massRatioStepSize, double scale, StellarSystem s)
 {
-    double tMass = s.primary.mass + sampleT (gen, scale * massStepSize * massStepSize);
-    double tMassRatio = s.getMassRatio() + sampleT (gen, scale * massRatioStepSize * massRatioStepSize);
+//    double tMass = s.primary.mass + sampleT (gen, scale * massStepSize * massStepSize);
+//    double tMassRatio = s.getMassRatio() + sampleT (gen, scale * massRatioStepSize * massRatioStepSize);
+    double tMass = s.primary.mass + scale * massStepSize * sampleT(gen, 1.0);
+    double tMassRatio = s.getMassRatio() + scale * massRatioStepSize * sampleT(gen, 1.0);
 
     if (tMass < 0)
         tMass = -tMass;
