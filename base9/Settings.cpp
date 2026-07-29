@@ -928,6 +928,7 @@ static void printUsage ()
     cerr << "\t\t0 = Bergeron (~2013)" << endl;
     cerr << "\t\t1 = Bergeron (2019)" << endl;
     cerr << "\t\t2 = Bergeron (2020)" << endl;
+    cerr << "\t\t3 = Bergeron (2026 [HST-only])" << endl;
 
     cerr << "\n\t--eepInterpolationPower <int>" << endl;
     cerr << "\t\tAdjusts the number of interpolated steps between EEPs in photometry.\n" << endl;

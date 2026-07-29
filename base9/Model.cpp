@@ -14,6 +14,7 @@
 #include "WdAtmosphereModels/BergeronAtmosphereModel.hpp"
 #include "WdAtmosphereModels/Bergeron2019AtmosphereModel.hpp"
 #include "WdAtmosphereModels/Bergeron2020AtmosphereModel.hpp"
+#include "WdAtmosphereModels/Bergeron2026HstAtmosphereModel.hpp"
 
 using std::cout;
 using std::cerr;
@@ -60,6 +61,8 @@ namespace internal
                 return shared_ptr<Bergeron2019AtmosphereModel>(new Bergeron2019AtmosphereModel);
             case WdAtmosphereModelSet::BERGERON_2020:
                 return shared_ptr<Bergeron2020AtmosphereModel>(new Bergeron2020AtmosphereModel);
+            case WdAtmosphereModelSet::BERGERON_2026_HST:
+                return shared_ptr<Bergeron2026HstAtmosphereModel>(new Bergeron2026HstAtmosphereModel);
             default:
                 cerr << "***Error: No model found for white dwarf atmosphere set " << static_cast<int>(model) << ".***" << endl;
                 cerr << "[Exiting...]" << endl;
