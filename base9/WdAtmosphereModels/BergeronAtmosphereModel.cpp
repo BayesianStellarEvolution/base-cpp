@@ -64,7 +64,9 @@ void BergeronAtmosphereModel::loadModel (std::string path)
 
                     in >> teff
                        >> logg
-                       >> ignore >> ignore;
+                       >> ignore;
+
+                    if (hasBc) in >> ignore;
 
                     for (auto f : availableFilters) // Read all filters
                     {

@@ -45,6 +45,8 @@ class BergeronAtmosphereModel : public WdAtmosphereModel
     std::string dirName = "bergeron/";
 
     std::vector<std::string> files;
+
+    bool hasBc = true;
 };
 
 #endif

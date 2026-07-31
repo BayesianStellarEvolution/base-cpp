@@ -17,6 +17,7 @@ class Bergeron2026HstAtmosphereModel : public BergeronAtmosphereModel
         dirName = "bergeron_2026_hst/";
 
         availableFilters = { "F435W", "F555W", "F606W", "F814W" }; // HST
+        hasBc = false;
 
         files = {
             {"Table_Mass_0.2"},
