@@ -156,20 +156,20 @@ class Chain : public McmcApplication
 
         if ( veryVerbose )
         {
-            cout << "\nSampling history for Cholesky Decomposition Matrix:" << endl;
-
-            for (size_t k = 0; k < params.at(0).size(); ++k)
-            {
-                for (int i = 0; i < NPARAMS; ++i)
-                {
-                    if (priorVar.at(i) > EPSILON)
-                    {
-                        cout << std::setw(10) << std::fixed << std::setprecision(6) << params.at(i).at(k) << " ";
-                    }
-                }
-
-                cout << '\n';
-            }
+//            cout << "\nSampling history for Cholesky Decomposition Matrix:" << endl;
+//
+//            for (size_t k = 0; k < params.at(0).size(); ++k)
+//            {
+//                for (int i = 0; i < NPARAMS; ++i)
+//                {
+//                    if (priorVar.at(i) > EPSILON)
+//                    {
+//                        cout << std::setw(10) << std::fixed << std::setprecision(6) << params.at(i).at(k) << " ";
+//                    }
+//                }
+//
+//                cout << '\n';
+//            }
 
             cout << "\nCholesky Decomposition Matrix:" << endl;
 

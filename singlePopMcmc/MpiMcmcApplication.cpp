@@ -629,8 +629,6 @@ int MpiMcmcApplication::run()
 
     if (!settings.stopAfterBurnin)
     {
-        stage3Burnin(chain, checkPriors, logPostFunc);
-
         // Main run
         // Overwrite the burnin photometry set with the full photometry set
         // SSE memory must be reallocated to fit the potentially larger number of stars
@@ -639,6 +637,7 @@ int MpiMcmcApplication::run()
 
         allocateSSEMem();
 
+        stage3Burnin(chain, checkPriors, logPostFunc);
         mainRun(chain, checkPriors, logPostFunc);
 
 
