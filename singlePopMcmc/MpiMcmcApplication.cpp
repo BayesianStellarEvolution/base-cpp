@@ -49,7 +49,7 @@ MpiMcmcApplication::MpiMcmcApplication(Settings &s,
     : evoModels(makeModel(s.global)), settings(s)
     , gen(uint32_t(s.global.seed * uint32_t(2654435761))) // Applies Knuth's multiplicative hash for obfuscation (TAOCP Vol. 3)
     , mcmcStore(mcmcStore), fieldStarLikelihood(fieldStarLikelihood)
-    , pool(s.global.threads)
+    , pool(s.threads)
 {
     N_WD_MASS1 = GlobalSettings::calcWdMassSteps(s.wdInterpolationPower);
 

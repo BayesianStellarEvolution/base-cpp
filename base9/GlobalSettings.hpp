@@ -42,7 +42,6 @@ class GlobalSettings
     std::vector<std::string> exclude;
 
     uint32_t seed = std::numeric_limits<uint32_t>::max();
-    unsigned int threads = std::numeric_limits<int>::max();
 
 
     struct MainSequenceSettings
@@ -104,6 +103,7 @@ class GlobalSettings
     [[noreturn]] void exitWith (std::string);
 
     static void printUsage();
+    static void printVerboseUsage();
 
     // Static helpers for interpolation power validation and step calculation
     static constexpr int EEP_POWER_MIN = -5;
@@ -111,6 +111,7 @@ class GlobalSettings
 
     static bool validateEepPower(int power) { return power >= EEP_POWER_MIN; }
     static bool validateWdPower(int power) { return power >= WD_POWER_MIN; }
+    static bool validateThreads(unsigned int threads) { return threads >= 1; }
 
     static int calcEepSteps(int eepInterpolationPower) {
         return eepInterpolationPower == 0 ? 80

@@ -21,6 +21,7 @@ class Settings
     bool noBinaries = false;
     int eepInterpolationPower = 0;
     int wdInterpolationPower = 0;
+    unsigned int threads = std::numeric_limits<int>::max();
 
     struct SinglePopMcmcSettings
     {

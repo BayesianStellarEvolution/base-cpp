@@ -14,14 +14,22 @@ using std::string;
 void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
 {
     // Check for --help before global processing (which would exit)
+    bool wantsHelp = false;
+    bool wantsVerbose = false;
     for (int i = 1; i < argc; ++i)
     {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0)
-        {
-            GlobalSettings::printUsage();
-            printUsage();
-            exit(EXIT_SUCCESS);
-        }
+            wantsHelp = true;
+        if (strcmp(argv[i], "--verbose") == 0)
+            wantsVerbose = true;
+    }
+    if (wantsHelp)
+    {
+        GlobalSettings::printUsage();
+        printUsage();
+        if (wantsVerbose)
+            GlobalSettings::printVerboseUsage();
+        exit(EXIT_SUCCESS);
     }
 
     global.fromCLI(argc, argv);

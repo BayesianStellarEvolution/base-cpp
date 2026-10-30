@@ -201,7 +201,6 @@ void GlobalSettings::fromCLI (int argc, char **argv)
 
         // General options
         {"seed", required_argument, 0, 0xE0},
-        {"threads", required_argument, 0, 0xCE},
         {"help", no_argument, 0, 0xDB},
         {"version", no_argument, 0, 0xDA},
 
@@ -361,15 +360,6 @@ void GlobalSettings::fromCLI (int argc, char **argv)
             case 0xDA:
                 printVersion ();
                 exit (EXIT_SUCCESS);
-
-            case 0xCE:
-                istringstream (string (optarg)) >> threads;
-                if (threads <= 0)
-                {
-                    cerr << "You must have at least one thread" << endl;
-                    exit(EXIT_FAILURE);
-                }
-                break;
 
             case 0xC8:
                 istringstream (string (optarg)) >> cluster.starting.Fe_H;
@@ -625,7 +615,6 @@ void GlobalSettings::printUsage ()
     cerr << "  --version                 Show version information and exit\n";
     cerr << "  --config <file>           YAML configuration file (default: base9.yaml)\n";
     cerr << "  --seed <int>              Random number generator seed\n";
-    cerr << "  --threads <int>           Number of threads to use\n";
     cerr << "  --verbose                 Enable verbose output\n";
     cerr << "  --veryVerbose             Enable very verbose output (includes --verbose)\n";
     cerr << "\n";
@@ -717,6 +706,122 @@ void GlobalSettings::printUsage ()
     cerr << "  --ignoreLowSigma          Suppress warnings for sigma < 0.01\n";
     cerr << "  --allowNegativeSigma      Allow negative sigmas (disables filter)\n";
     cerr << "\n";
+}
+
+void GlobalSettings::printVerboseUsage ()
+{
+    cerr << "\nDetailed Option Reference\n";
+    cerr << "=========================\n\n";
+
+    cerr << "Model Options:\n";
+    cerr << "  --msModelFile <file>\n";
+    cerr << "      Specify a model file relative to --modelDirectory\n\n";
+
+    cerr << "  --ifmr <int>              Initial-final mass relation:\n";
+    cerr << "      0 = Weidemann\n";
+    cerr << "      1 = Williams\n";
+    cerr << "      2 = Salaris linear\n";
+    cerr << "      3 = Salaris piecewise linear\n";
+    cerr << "      4-11 = Tunable\n";
+    cerr << "      12 = Cummings PARSEC-based\n";
+    cerr << "      13 = Cummings MIST-based\n\n";
+
+    cerr << "  --wdModel <int>           WD cooling model:\n";
+    cerr << "      0 = Wood\n";
+    cerr << "      1 = Montgomery (original)\n";
+    cerr << "      2 = Althaus\n";
+    cerr << "      3 = Renedo\n";
+    cerr << "      4 = Montgomery (2018)\n\n";
+
+    cerr << "  --wdAtmosphereModel <int> WD atmosphere model:\n";
+    cerr << "      0 = Bergeron (~2013)\n";
+    cerr << "      1 = Bergeron (2019)\n";
+    cerr << "      2 = Bergeron (2020)\n";
+    cerr << "      3 = Bergeron (2026 [HST-only])\n\n";
+
+    cerr << "File Options:\n";
+    cerr << "  --scatterFile <path>\n";
+    cerr << "      The absolute path to a scatter file for output. The scatter\n";
+    cerr << "      file does not have to exist and WILL be overwritten without\n";
+    cerr << "      warning.\n\n";
+
+    cerr << "Cluster Parameters:\n";
+    cerr << "  NOTE: Use either distMod OR parallax options, not both.\n";
+    cerr << "        All three (starting, prior, sigma) must be specified for the chosen type.\n\n";
+
+    cerr << "  --index <int>\n";
+    cerr << "      0 being the first filter in the dataset\n\n";
+
+    cerr << "Interpolation Power:\n";
+    cerr << "  --eepInterpolationPower <int>\n";
+    cerr << "      Adjusts the number of interpolated steps between EEPs in the isochrone.\n";
+    cerr << "      The isochrone contains ~100 EEPs; this multiplies that by the step count.\n\n";
+    cerr << "             0 = Traditional EEP interpolation, 80 steps per EEP interval (default)\n";
+    cerr << "      -5 .. -1 = Reduced interpolation; -5 gives 1 step (un-interpolated model)\n";
+    cerr << "       1 ..  n = Configurable EEP interpolation, provides 2^(5+n) steps per EEP interval.\n";
+    cerr << "                 1 (64 steps) is on the order of the traditional value.\n\n";
+
+    cerr << "  --wdInterpolationPower <int>\n";
+    cerr << "      Adjusts the number of WD mass grid points between MIN_MASS1 and M_wd_up.\n\n";
+    cerr << "             0 = Traditional WD interpolation, 8000 steps (default)\n";
+    cerr << "      -7 .. -1 = Reduced interpolation; -7 gives 32 steps\n";
+    cerr << "       1 ..  n = Configurable WD interpolation, provides 2^(12+n) steps.\n";
+    cerr << "                 1 (8192 steps) is on the order of the traditional value.\n\n";
+
+    cerr << "Star Filtering:\n";
+    cerr << "  --include LIST and --exclude LIST\n";
+    cerr << "      Filters the input photometry. LIST should be a comma-separated list of IDs\n";
+    cerr << "      exactly as they are in the photometry (excluding leading spaces; see output\n";
+    cerr << "      with --veryVerbose --exitAfterLoad flags if unsure).\n\n";
+
+    cerr << "      Invalid items in LIST (i.e., those not in the photometry file) are ignored\n";
+    cerr << "      silently. The list of filtered IDs is printed if --verbose is set.\n\n";
+
+    cerr << "      Behavior:\n";
+    cerr << "        --include excludes all stars but those listed.\n";
+    cerr << "        --exclude includes all but those listed.\n";
+    cerr << "        --include and --exclude together excludes all stars except those\n";
+    cerr << "          included in --include and not excluded in --exclude.\n\n";
+
+    cerr << "      Example:\n";
+    cerr << "        $ ./bin/singlePopMcmc --photFile Hyades.UBV.phot --verbose \\\n";
+    cerr << "            --include \"vB043,HZ4,VR7\" --exclude \"HZ4\"\n";
+    cerr << "        Output includes: Loaded stars: 'vB043', 'VR7'\n\n";
+
+    cerr << "Behavior Flags:\n";
+    cerr << "  --onlyWDs\n";
+    cerr << "      Restrict WD numerical integration to only occur above the AGB tip.\n";
+    cerr << "      Primarily useful when the MS model doesn't contain the filters you want\n";
+    cerr << "      in a WD-only run.\n\n";
+
+    cerr << "  --allowInvalidModels\n";
+    cerr << "      Allows runs with MS models which would be invalid due to missing filters\n";
+    cerr << "      to proceed. WILL cause an unexplained crash if you actually use the MS models.\n\n";
+
+    cerr << "  --includeBurnin\n";
+    cerr << "      Returns the pre-9.6 behavior to sampleMass and sampleWDMass where all lines\n";
+    cerr << "      from the result file are considered (rather than just stage 3, post-burnin).\n\n";
+
+    cerr << "  --stopAfterBurnin\n";
+    cerr << "      Stops the run after the Stage 2 burnin for use with --startWithBurnin.\n\n";
+
+    cerr << "  --startWithBurnin <filename>\n";
+    cerr << "      Starts the run with the Stage 2 burnin output from a standard run of BASE-9\n";
+    cerr << "      or a run using the --stopAfterBurnin flag.\n\n";
+
+    cerr << "  --interpolateCMD\n";
+    cerr << "      Enables interpolation over the mass grid in makeCMDs, similar to the\n";
+    cerr << "      integration behavior in singlePopMcmc.\n\n";
+
+    cerr << "Debugging:\n";
+    cerr << "  --exitAfterLoad\n";
+    cerr << "      Dev flag for model and photometry debugging\n\n";
+
+    cerr << "  --ignoreLowSigma\n";
+    cerr << "      Turn off warning about sigmas in photometry less than 0.01\n\n";
+
+    cerr << "  --allowNegativeSigma\n";
+    cerr << "      Allow negative sigmas in photometry, indicating an ignored filter for that star\n\n";
 }
 
 static void printVersion()
