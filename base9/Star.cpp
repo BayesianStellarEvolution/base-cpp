@@ -170,7 +170,7 @@ void StellarSystem::setMassRatio(double r)
     secondary.mass = primary.mass * r;
 }
 
-void StellarSystem::readCMD(const string &s, int filters, const Settings &settings)
+void StellarSystem::readCMD(const string &s, int filters, const GlobalSettings &settings)
 {
     static int lineNumber = 1; // Photometry starts after the header line
     lineNumber += 1;

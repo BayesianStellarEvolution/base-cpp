@@ -49,7 +49,7 @@ struct clustPar
     double logPost;
 };
 
-static vector<clustPar> readSampledParams (Model &evoModels, const Settings &s)
+static vector<clustPar> readSampledParams (Model &evoModels, const GlobalSettings &s)
 {
     string line;
 
@@ -151,11 +151,9 @@ class Application
 {
   public:
     Application(Settings s)
-        :  evoModels(makeModel(s)), settings(s)
+        :  evoModels(makeModel(s.global)), settings(s)
     {
-        N_WD_MASS1 = s.wdInterpolationPower == 0 ? 8000
-                                                 : s.wdInterpolationPower > 0 ? 4096 << s.wdInterpolationPower
-                                                                              : 4096 >> -s.wdInterpolationPower;
+        N_WD_MASS1 = GlobalSettings::calcWdMassSteps(s.wdInterpolationPower);
     }
 
     ~Application()
@@ -182,7 +180,7 @@ class Application
 
 double Application::wdGridMass(int point) const
 {
-    double dWdMass1 = (settings.whiteDwarf.M_wd_up - MIN_MASS1) / static_cast<double>(N_WD_MASS1);
+    double dWdMass1 = (settings.global.whiteDwarf.M_wd_up - MIN_MASS1) / static_cast<double>(N_WD_MASS1);
     return MIN_MASS1 + (dWdMass1 * point);
 }
 
@@ -214,16 +212,16 @@ void Application::run()
         // open files for reading (data) and writing
         // rData implcitly relies on going out of scope to close the photometry file
         // This is awful, but pretty (since this code is, at time of writing, in restricted, anonymous scope
-        std::ifstream rData(settings.files.phot);
+        std::ifstream rData(settings.global.files.phot);
 
         if (!rData)
         {
-            cerr << "***Error: Photometry file " << settings.files.phot << " was not found.***" << endl;
+            cerr << "***Error: Photometry file " << settings.global.files.phot << " was not found.***" << endl;
             cerr << "[Exiting...]" << endl;
             exit (-1);
         }
 
-        auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings);
+        auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings.global);
         filterNames = ret.first;
 
         for (const auto &system : ret.second)
@@ -250,7 +248,7 @@ void Application::run()
 
     Cluster clust;
 
-    auto sampledParams = readSampledParams (evoModels, settings);
+    auto sampledParams = readSampledParams (evoModels, settings.global);
 
     double sampledMin = std::numeric_limits<double>::max();
     double sampledMax = std::numeric_limits<double>::lowest();
@@ -267,7 +265,7 @@ void Application::run()
     };
 
 
-    string filename = settings.files.output + ".sampleCmds";
+    string filename = settings.global.files.output + ".sampleCmds";
 
     ofstream fout(filename);
 
@@ -314,7 +312,7 @@ void Application::run()
         else
             clust.ifmrQuadCoef = clust.priorMean[IFMR_QUADCOEF] = 0.08;
 
-        clust.setM_wd_up(settings.whiteDwarf.M_wd_up);
+        clust.setM_wd_up(settings.global.whiteDwarf.M_wd_up);
 
         // Set Cluster's AGBT_zmass based on the model's agbTipMass
         unique_ptr<Isochrone> isochrone(evoModels.mainSequenceEvol->deriveIsochrone(clust.feh, clust.yyy, clust.age));
@@ -375,7 +373,7 @@ Isochrone Application::interpolateIsochrone(const Cluster &clust, const Isochron
 {
     vector<EvolutionaryPoint> eeps;
 
-    if (settings.interpolateCMD)
+    if (settings.global.interpolateCMD)
     {
         const int isoIncrem =
             settings.eepInterpolationPower == 0 ? 80
@@ -406,7 +404,7 @@ Isochrone Application::interpolateIsochrone(const Cluster &clust, const Isochron
                 star.primary.mass   = mass;
                 star.secondary.mass = 0.0;
 
-                eeps.emplace_back(m * isoIncrem + k, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.modIsParallax));
+                eeps.emplace_back(m * isoIncrem + k, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.global.modIsParallax));
             }
         }
     }
@@ -423,7 +421,7 @@ Isochrone Application::interpolateIsochrone(const Cluster &clust, const Isochron
             star.primary.mass   = mass;
             star.secondary.mass = 0.0;
 
-            eeps.emplace_back(e, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.modIsParallax));
+            eeps.emplace_back(e, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.global.modIsParallax));
         }
     }
 
@@ -435,13 +433,13 @@ vector<EvolutionaryPoint> Application::interpolateWDIsochrone(const Cluster &clu
 {
     vector<EvolutionaryPoint> eeps;
 
-    if (settings.interpolateCMD)
+    if (settings.global.interpolateCMD)
     {
         for (size_t j = 0; j < N_WD_MASS1; ++j)
         {
             double mass = wdGridMass(j);
 
-            if (mass <= isochrone.agbTipMass() || mass > settings.whiteDwarf.M_wd_up)
+            if (mass <= isochrone.agbTipMass() || mass > settings.global.whiteDwarf.M_wd_up)
                 continue;
 
             {
@@ -450,7 +448,7 @@ vector<EvolutionaryPoint> Application::interpolateWDIsochrone(const Cluster &clu
                 star.primary.wdType = wdType;
                 star.secondary.mass = 0.0;
 
-                eeps.emplace_back(j, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.modIsParallax));
+                eeps.emplace_back(j, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.global.modIsParallax));
             }
         }
     }
@@ -459,11 +457,11 @@ vector<EvolutionaryPoint> Application::interpolateWDIsochrone(const Cluster &clu
         int e = 0;
         double mass = isochrone.agbTipMass();
 
-        while (mass < settings.whiteDwarf.M_wd_up)
+        while (mass < settings.global.whiteDwarf.M_wd_up)
         {
             mass = isochrone.agbTipMass() + ++e * 0.05;
 
-            if (mass > settings.whiteDwarf.M_wd_up)
+            if (mass > settings.global.whiteDwarf.M_wd_up)
                 break;
 
             StellarSystem star;
@@ -471,7 +469,7 @@ vector<EvolutionaryPoint> Application::interpolateWDIsochrone(const Cluster &clu
             star.primary.wdType = wdType;
             star.secondary.mass = 0.0;
 
-            eeps.emplace_back(e, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.modIsParallax));
+            eeps.emplace_back(e, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.global.modIsParallax));
         }
     }
 
@@ -485,12 +483,12 @@ int main (int argc, char *argv[])
 
     settings.loadSettings (argc, argv);
 
-    if (settings.seed == std::numeric_limits<uint32_t>::max())
+    if (settings.global.seed == std::numeric_limits<uint32_t>::max())
     {
         srand(std::time(0));
-        settings.seed = rand();
+        settings.global.seed = rand();
 
-        cout << "Seed: " << settings.seed << endl;
+        cout << "Seed: " << settings.global.seed << endl;
     }
 
     Application(settings).run();

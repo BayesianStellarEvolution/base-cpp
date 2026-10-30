@@ -53,43 +53,43 @@ Settings settings;
  */
 static void initIfmrGridControl (Chain *mc, Model &evoModels, struct ifmrGridControl *ctrl, Settings &s)
 {
-    ctrl->priorMean.at(CARBONICITY) = mc->clust.priorMean.at(CARBONICITY) = s.cluster.priorMeans.carbonicity;
-    ctrl->priorVar.at(CARBONICITY) = s.cluster.priorSigma.carbonicity;
+    ctrl->priorMean.at(CARBONICITY) = mc->clust.priorMean.at(CARBONICITY) = s.global.cluster.priorMeans.carbonicity;
+    ctrl->priorVar.at(CARBONICITY) = s.global.cluster.priorSigma.carbonicity;
 
-    ctrl->priorMean.at(FEH) = s.cluster.priorMeans.Fe_H;
-    ctrl->priorVar.at(FEH)  = s.cluster.priorSigma.Fe_H;
+    ctrl->priorMean.at(FEH) = s.global.cluster.priorMeans.Fe_H;
+    ctrl->priorVar.at(FEH)  = s.global.cluster.priorSigma.Fe_H;
 
     if (ctrl->priorVar.at(FEH) < 0.0)
     {
         ctrl->priorVar.at(FEH) = 0.0;
     }
 
-    ctrl->priorMean.at(MOD) = s.cluster.priorMeans.distMod;
-    ctrl->priorVar.at(MOD)  = s.cluster.priorSigma.distMod;
+    ctrl->priorMean.at(MOD) = s.global.cluster.priorMeans.distMod;
+    ctrl->priorVar.at(MOD)  = s.global.cluster.priorSigma.distMod;
     if (ctrl->priorVar.at(MOD) < 0.0)
     {
         ctrl->priorVar.at(MOD) = 0.0;
     }
 
-    ctrl->priorMean.at(ABS) = s.cluster.priorMeans.Av;
-    ctrl->priorVar.at(ABS)  = s.cluster.priorSigma.Av;
+    ctrl->priorMean.at(ABS) = s.global.cluster.priorMeans.Av;
+    ctrl->priorVar.at(ABS)  = s.global.cluster.priorSigma.Av;
     if (ctrl->priorVar.at(ABS) < 0.0)
     {
         ctrl->priorVar.at(ABS) = 0.0;
     }
 
-    ctrl->priorMean.at(AGE) = s.cluster.priorMeans.logAge;
-    ctrl->priorVar.at(AGE)  = s.cluster.priorSigma.logAge;
+    ctrl->priorMean.at(AGE) = s.global.cluster.priorMeans.logAge;
+    ctrl->priorVar.at(AGE)  = s.global.cluster.priorSigma.logAge;
 
-    ctrl->priorMean.at(YYY) = s.cluster.priorMeans.Y;
-    ctrl->priorVar.at(YYY)  = s.cluster.priorSigma.Y;
+    ctrl->priorMean.at(YYY) = s.global.cluster.priorMeans.Y;
+    ctrl->priorVar.at(YYY)  = s.global.cluster.priorSigma.Y;
     if (ctrl->priorVar.at(YYY) < 0.0)
     {
         ctrl->priorVar.at(YYY) = 0.0;
     }
 
-    ctrl->priorMean.at(CARBONICITY) = s.cluster.priorMeans.carbonicity;
-    ctrl->priorVar.at(CARBONICITY)  = s.cluster.priorSigma.carbonicity;
+    ctrl->priorMean.at(CARBONICITY) = s.global.cluster.priorMeans.carbonicity;
+    ctrl->priorVar.at(CARBONICITY)  = s.global.cluster.priorSigma.carbonicity;
     if (ctrl->priorVar.at(CARBONICITY) < 0.0)
     {
         ctrl->priorVar.at(CARBONICITY) = 0.0;
@@ -142,8 +142,8 @@ static void initIfmrGridControl (Chain *mc, Model &evoModels, struct ifmrGridCon
 
     /* open files for reading (data) and writing */
 
-    ctrl->minMag = s.cluster.minMag;
-    ctrl->maxMag = s.cluster.maxMag;
+    ctrl->minMag = s.global.cluster.minMag;
+    ctrl->maxMag = s.global.cluster.maxMag;
 
     ctrl->iStart = 0;
 
@@ -163,12 +163,12 @@ static void initChain (Chain *mc, const struct ifmrGridControl *ctrl)
     }
 
     // If there is no beta in file, initialize everything to prior means
-    mc->clust.feh = settings.cluster.starting.Fe_H;
-    mc->clust.mod = settings.cluster.starting.Av;
-    mc->clust.abs = settings.cluster.starting.Av;
-    mc->clust.yyy = settings.cluster.starting.Y;
-    mc->clust.age = settings.cluster.starting.logAge;
-    mc->clust.carbonicity = settings.cluster.starting.carbonicity;
+    mc->clust.feh = settings.global.cluster.starting.Fe_H;
+    mc->clust.mod = settings.global.cluster.starting.Av;
+    mc->clust.abs = settings.global.cluster.starting.Av;
+    mc->clust.yyy = settings.global.cluster.starting.Y;
+    mc->clust.age = settings.global.cluster.starting.logAge;
+    mc->clust.carbonicity = settings.global.cluster.starting.carbonicity;
     mc->clust.ifmrIntercept = ctrl->priorMean.at(IFMR_INTERCEPT);
     mc->clust.ifmrSlope = ctrl->priorMean.at(IFMR_SLOPE);
     mc->clust.ifmrQuadCoef = ctrl->priorMean.at(IFMR_QUADCOEF);
@@ -204,15 +204,15 @@ int main (int argc, char *argv[])
 
     settings.loadSettings (argc, argv);
 
-    if (settings.seed == std::numeric_limits<uint32_t>::max())
+    if (settings.global.seed == std::numeric_limits<uint32_t>::max())
     {
         srand(std::time(0));
-        settings.seed = rand();
+        settings.global.seed = rand();
 
-        cout << "Seed: " << settings.seed << endl;
+        cout << "Seed: " << settings.global.seed << endl;
     }
 
-    std::mt19937 gen(settings.seed * uint32_t(2654435761)); // Applies Knuth's multiplicative hash for obfuscation (TAOCP Vol. 3)
+    std::mt19937 gen(settings.global.seed * uint32_t(2654435761)); // Applies Knuth's multiplicative hash for obfuscation (TAOCP Vol. 3)
     {
         const int warmupIter = 10000;
 
@@ -229,10 +229,10 @@ int main (int argc, char *argv[])
 
     std::unique_ptr<SampleWdMassBackingStore> sampleWdMassStore;
 
-    sampleWdMassStore.reset(new SampleWdMass_FileBackingStore(settings.files.output));
+    sampleWdMassStore.reset(new SampleWdMass_FileBackingStore(settings.global.files.output));
 
 
-    Model evoModels = makeModel(settings);
+    Model evoModels = makeModel(settings.global);
 
     initIfmrGridControl (&mc, evoModels, &ctrl, settings);
 
@@ -243,26 +243,26 @@ int main (int argc, char *argv[])
 
         vector<string> filterNames;
 
-        std::ifstream rData(settings.files.phot);
+        std::ifstream rData(settings.global.files.phot);
 
         if (!rData)
         {
-            cerr << "***Error: Photometry file " << settings.files.phot << " was not found.***" << endl;
+            cerr << "***Error: Photometry file " << settings.global.files.phot << " was not found.***" << endl;
             cerr << ".at(Exiting...)" << endl;
             exit (1);
         }
 
-        auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings);
+        auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings.global);
 
         filterNames = ret.first;
         mc.stars = ret.second;
 
-        evoModels.restrictFilters(filterNames, settings.allowInvalidModels);
+        evoModels.restrictFilters(filterNames, settings.global.allowInvalidModels);
 
-        if (   settings.cluster.index < 0
-               || static_cast<size_t>(settings.cluster.index) > filterNames.size())
+        if (   settings.global.cluster.index < 0
+               || static_cast<size_t>(settings.global.cluster.index) > filterNames.size())
         {
-            cerr << "*** Error: " << settings.cluster.index << " not a valid magnitude index.  Choose 0 through " << filterNames.size() - 1 << " ***"<< endl;
+            cerr << "*** Error: " << settings.global.cluster.index << " not a valid magnitude index.  Choose 0 through " << filterNames.size() - 1 << " ***"<< endl;
             cerr << "(Exiting...)" << endl;
             exit (1);
         }
@@ -277,11 +277,11 @@ int main (int argc, char *argv[])
         fsLike = mc.stars.size() == 1 ? 0.0 : exp (logFieldStarLikelihood);
     }
 
-    mc.clust.setM_wd_up(settings.whiteDwarf.M_wd_up);
+    mc.clust.setM_wd_up(settings.global.whiteDwarf.M_wd_up);
 
     initChain (&mc, &ctrl);
 
-    auto sampledPars = base::utility::readSampledParams (evoModels, settings);
+    auto sampledPars = base::utility::readSampledParams (evoModels, settings.global);
     cout << "sampledPars.at(0).age    = " << sampledPars.at(0).age << endl;
     cout << "sampledPars.at(last).age = " << sampledPars.back().age << endl;
 
@@ -352,7 +352,7 @@ int main (int argc, char *argv[])
 
                         try
                         {
-                            wdLogPost.at(im) = star.logPost (internalCluster, evoModels, *isochrone, settings.modIsParallax);
+                            wdLogPost.at(im) = star.logPost (internalCluster, evoModels, *isochrone, settings.global.modIsParallax);
                             postClusterStar += exp (wdLogPost.at(im));
 
                             if (wdLogPost.at(im) > maxWDLogPost)

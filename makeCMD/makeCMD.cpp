@@ -25,7 +25,7 @@ class Application
 {
   public:
     Application(Settings s)
-        :  evoModels(makeModel(s)), wdEvoModels(makeModel(s)), settings(s)
+        :  evoModels(makeModel(s.global)), wdEvoModels(makeModel(s.global)), settings(s)
     {}
 
     ~Application()
@@ -47,23 +47,23 @@ void Application::run()
     Cluster clust;
 
     // Standard cluster parameters
-    clust.feh = settings.cluster.starting.Fe_H;
-    clust.priorMean[FEH] = settings.cluster.priorMeans.Fe_H;
+    clust.feh = settings.global.cluster.starting.Fe_H;
+    clust.priorMean[FEH] = settings.global.cluster.priorMeans.Fe_H;
 
-    clust.mod = settings.cluster.starting.distMod;
-    clust.priorMean[MOD] = settings.cluster.priorMeans.distMod;
+    clust.mod = settings.global.cluster.starting.distMod;
+    clust.priorMean[MOD] = settings.global.cluster.priorMeans.distMod;
 
-    clust.abs = settings.cluster.starting.Av;
-    clust.priorMean[ABS] = fabs(settings.cluster.priorMeans.Av);
+    clust.abs = settings.global.cluster.starting.Av;
+    clust.priorMean[ABS] = fabs(settings.global.cluster.priorMeans.Av);
 
-    clust.age = settings.cluster.starting.logAge;
-    clust.priorMean[AGE] = settings.cluster.priorMeans.logAge;
+    clust.age = settings.global.cluster.starting.logAge;
+    clust.priorMean[AGE] = settings.global.cluster.priorMeans.logAge;
 
-    clust.carbonicity = settings.cluster.starting.carbonicity;
-    clust.priorMean[CARBONICITY] = settings.cluster.priorMeans.carbonicity;
+    clust.carbonicity = settings.global.cluster.starting.carbonicity;
+    clust.priorMean[CARBONICITY] = settings.global.cluster.priorMeans.carbonicity;
 
-    clust.yyy = settings.cluster.starting.Y;
-    clust.priorMean[YYY] = settings.cluster.priorMeans.Y;
+    clust.yyy = settings.global.cluster.starting.Y;
+    clust.priorMean[YYY] = settings.global.cluster.priorMeans.Y;
 
     // IFMR parameters
     clust.ifmrSlope = clust.priorMean[IFMR_SLOPE] = 0.08;
@@ -74,7 +74,7 @@ void Application::run()
     else
         clust.ifmrQuadCoef = clust.priorMean[IFMR_QUADCOEF] = 0.08;
 
-    clust.setM_wd_up(settings.whiteDwarf.M_wd_up);
+    clust.setM_wd_up(settings.global.whiteDwarf.M_wd_up);
 
     // Now setup the filters for MS and WDs
     {
@@ -135,7 +135,7 @@ void Application::run()
     auto interpIsochrone = interpolateIsochrone(clust, *isochrone);
 
     {
-        string filename = settings.files.output + ".ms";
+        string filename = settings.global.files.output + ".ms";
 
         ofstream fout(filename);
 
@@ -174,7 +174,7 @@ void Application::run()
     }
 
     {
-        string filename = settings.files.output + ".wd";
+        string filename = settings.global.files.output + ".wd";
 
         ofstream fout(filename);
 
@@ -232,7 +232,7 @@ std::pair<Isochrone, Isochrone> Application::interpolateIsochrone(const Cluster 
                 star.primary.mass   = mass + deltaSteps * steps;
                 star.secondary.mass = 0.0;
 
-                eeps.emplace_back(e, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.modIsParallax));
+                eeps.emplace_back(e, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.global.modIsParallax));
             }
         }
     }
@@ -247,7 +247,7 @@ std::pair<Isochrone, Isochrone> Application::interpolateIsochrone(const Cluster 
             star.primary.mass   = mass;
             star.secondary.mass = 0.0;
 
-            wdEeps.emplace_back(0, star.primary.mass, star.deriveCombinedMags(clust, wdEvoModels, isochrone, settings.modIsParallax));
+            wdEeps.emplace_back(0, star.primary.mass, star.deriveCombinedMags(clust, wdEvoModels, isochrone, settings.global.modIsParallax));
 
             mass += wdDelta;
         }
@@ -264,12 +264,12 @@ int main (int argc, char *argv[])
 
     settings.loadSettings (argc, argv);
 
-    if (settings.seed == std::numeric_limits<uint32_t>::max())
+    if (settings.global.seed == std::numeric_limits<uint32_t>::max())
     {
         srand(std::time(0));
-        settings.seed = rand();
+        settings.global.seed = rand();
 
-        cout << "Seed: " << settings.seed << endl;
+        cout << "Seed: " << settings.global.seed << endl;
     }
 
     Application(settings).run();

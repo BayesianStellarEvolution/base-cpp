@@ -59,7 +59,7 @@ class Application
   public:
     Application(Settings s, SampleMassBackingStore *sampleMassStore)
         // Applies Knuth's multiplicative hash for obfuscation (TAOCP Vol. 3)
-        : settings(s), gen(s.seed * uint32_t(2654435761)), evoModels(makeModel(s))
+        : settings(s), gen(s.global.seed * uint32_t(2654435761)), evoModels(makeModel(s.global))
         , sampleMassStore(sampleMassStore)
         , massStepSize(settings.sampleMass.deltaMass)
         , massRatioStepSize( s.noBinaries ? 0.0 : settings.sampleMass.deltaMassRatio )
@@ -78,29 +78,29 @@ class Application
             cout << "Generated " << warmupIter << " values." << endl;
         }
 
-        clust.feh = settings.cluster.starting.Fe_H;
-        clust.priorMean[FEH] = settings.cluster.priorMeans.Fe_H;
-        clust.priorVar[FEH]  = settings.cluster.priorSigma.Fe_H;
+        clust.feh = settings.global.cluster.starting.Fe_H;
+        clust.priorMean[FEH] = settings.global.cluster.priorMeans.Fe_H;
+        clust.priorVar[FEH]  = settings.global.cluster.priorSigma.Fe_H;
 
-        clust.mod = settings.cluster.starting.distMod;
-        clust.priorMean[MOD] = settings.cluster.priorMeans.distMod;
-        clust.priorVar[MOD]  = settings.cluster.priorSigma.distMod;
+        clust.mod = settings.global.cluster.starting.distMod;
+        clust.priorMean[MOD] = settings.global.cluster.priorMeans.distMod;
+        clust.priorVar[MOD]  = settings.global.cluster.priorSigma.distMod;
 
-        clust.abs = settings.cluster.starting.Av;
-        clust.priorMean[ABS] = fabs(settings.cluster.priorMeans.Av);
-        clust.priorVar[ABS]  = settings.cluster.priorSigma.Av;
+        clust.abs = settings.global.cluster.starting.Av;
+        clust.priorMean[ABS] = fabs(settings.global.cluster.priorMeans.Av);
+        clust.priorVar[ABS]  = settings.global.cluster.priorSigma.Av;
 
-        clust.age = settings.cluster.starting.logAge;
-        clust.priorMean[AGE] = settings.cluster.priorMeans.logAge;
-        clust.priorVar[AGE]  = settings.cluster.priorSigma.logAge;
+        clust.age = settings.global.cluster.starting.logAge;
+        clust.priorMean[AGE] = settings.global.cluster.priorMeans.logAge;
+        clust.priorVar[AGE]  = settings.global.cluster.priorSigma.logAge;
 
-        clust.carbonicity = settings.cluster.starting.carbonicity;
-        clust.priorMean[CARBONICITY] = settings.cluster.priorMeans.carbonicity;
-        clust.priorVar[CARBONICITY]  = settings.cluster.priorSigma.carbonicity;
+        clust.carbonicity = settings.global.cluster.starting.carbonicity;
+        clust.priorMean[CARBONICITY] = settings.global.cluster.priorMeans.carbonicity;
+        clust.priorVar[CARBONICITY]  = settings.global.cluster.priorSigma.carbonicity;
 
-        clust.yyy = settings.cluster.starting.Y;
-        clust.priorMean[YYY] = settings.cluster.priorMeans.Y;
-        clust.priorVar[YYY]  = settings.cluster.priorSigma.Y;
+        clust.yyy = settings.global.cluster.starting.Y;
+        clust.priorMean[YYY] = settings.global.cluster.priorMeans.Y;
+        clust.priorVar[YYY]  = settings.global.cluster.priorSigma.Y;
 
         if (evoModels.IFMR <= 3 || evoModels.IFMR >= 12)
         {
@@ -130,7 +130,7 @@ class Application
         else
             clust.ifmrQuadCoef = clust.priorMean[IFMR_QUADCOEF] = 0.08;
 
-        clust.setM_wd_up(settings.whiteDwarf.M_wd_up);
+        clust.setM_wd_up(settings.global.whiteDwarf.M_wd_up);
 
         for (auto &var : clust.priorVar)
         {
@@ -254,7 +254,7 @@ std::tuple<double, double, double> Application::sampleMass(const Isochrone &isoc
     // This takes a special function binding because it's overridden.
     std::function<double(StellarSystem&)> logPost =
         std::bind<double (StellarSystem::*) (const Cluster&, const Model&, const Isochrone&, const bool) const>
-        (&StellarSystem::logPost, _1, clust, evoModels, isochrone, settings.modIsParallax);
+        (&StellarSystem::logPost, _1, clust, evoModels, isochrone, settings.global.modIsParallax);
 
     // Start out with the burnin
     Chain<StellarSystem> burnin(static_cast<uint32_t>(std::uniform_int_distribution<>()(gen)), star, nullstream);
@@ -270,7 +270,7 @@ std::tuple<double, double, double> Application::sampleMass(const Isochrone &isoc
 
         try
         {
-            double acceptedPosterior = exp(finalStar.logPost(clust, evoModels, isochrone, settings.modIsParallax));
+            double acceptedPosterior = exp(finalStar.logPost(clust, evoModels, isochrone, settings.global.modIsParallax));
             return std::make_tuple(finalStar.primary.mass, finalStar.getMassRatio(), acceptedPosterior);
         }
         catch (InvalidModelError &e)
@@ -295,7 +295,7 @@ std::tuple<double, double, double> Application::sampleMass(const Isochrone &isoc
             main.run(mainProposal, logPost, priorCheck, iters);
 
             auto finalStar = main.get();
-            double acceptedPosterior = exp(finalStar.logPost(clust, evoModels, isochrone, settings.modIsParallax));
+            double acceptedPosterior = exp(finalStar.logPost(clust, evoModels, isochrone, settings.global.modIsParallax));
 
             return std::make_tuple(finalStar.primary.mass, finalStar.getMassRatio(), acceptedPosterior);
         }
@@ -320,25 +320,25 @@ void Application::run()
 
         vector<string> filterNames;
 
-        std::ifstream rData(settings.files.phot);
+        std::ifstream rData(settings.global.files.phot);
 
         if (!rData)
         {
-            cerr << "***Error: Photometry file " << settings.files.phot << " was not found.***" << endl;
+            cerr << "***Error: Photometry file " << settings.global.files.phot << " was not found.***" << endl;
             cerr << "(Exiting...)" << endl;
             exit (1);
         }
 
-        auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings);
+        auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings.global);
 
         filterNames = ret.first;
         stars = ret.second;
 
-        evoModels.restrictFilters(filterNames, settings.allowInvalidModels);
+        evoModels.restrictFilters(filterNames, settings.global.allowInvalidModels);
 
-        if (settings.cluster.index < 0 || static_cast<size_t>(settings.cluster.index) > filterNames.size())
+        if (settings.global.cluster.index < 0 || static_cast<size_t>(settings.global.cluster.index) > filterNames.size())
         {
-            cerr << "*** Error: " << settings.cluster.index << " is not a valid magnitude index.  Choose 0 through " << filterNames.size() - 1 << " ***"<< endl;
+            cerr << "*** Error: " << settings.global.cluster.index << " is not a valid magnitude index.  Choose 0 through " << filterNames.size() - 1 << " ***"<< endl;
             cerr << "(Exiting...)" << endl;
             exit (1);
         }
@@ -353,7 +353,7 @@ void Application::run()
         fsLike = exp (logFieldStarLikelihood);
     }
 
-    auto sampledPars = base::utility::readSampledParams (evoModels, settings);
+    auto sampledPars = base::utility::readSampledParams (evoModels, settings.global);
 
     /********** compile results *********/
     /*** now report sampled masses and parameters ***/
@@ -418,17 +418,17 @@ int main (int argc, char *argv[])
 
         settings.loadSettings (argc, argv);
 
-        if (settings.seed == std::numeric_limits<uint32_t>::max())
+        if (settings.global.seed == std::numeric_limits<uint32_t>::max())
         {
             srand(std::time(0));
-            settings.seed = rand();
+            settings.global.seed = rand();
 
-            cout << "Seed: " << settings.seed << endl;
+            cout << "Seed: " << settings.global.seed << endl;
         }
 
         SampleMassBackingStore *sampleMassStore = nullptr;
 
-        sampleMassStore = new SampleMass_FileBackingStore(settings.files.output);
+        sampleMassStore = new SampleMass_FileBackingStore(settings.global.files.output);
 
         Application(settings, std::move(sampleMassStore)).run();
 

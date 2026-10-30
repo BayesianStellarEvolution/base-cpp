@@ -41,7 +41,7 @@ namespace base
 
         // Assumptions:
         //   filterPriorMin and filterPriorMax will be cleared and overwritten.
-        pair<vector<string>, vector<StellarSystem>> readPhotometry (ifstream &fin, vector<double> &filterPriorMin, vector<double> &filterPriorMax, const Settings &settings)
+        pair<vector<string>, vector<StellarSystem>> readPhotometry (ifstream &fin, vector<double> &filterPriorMin, vector<double> &filterPriorMax, const GlobalSettings &settings)
         {
             string line, pch;
 
@@ -92,7 +92,7 @@ namespace base
                 //
                 // Include all remaining stars if settings.include is empty; otherwise,
                 //   Exclude all remaining stars not found in settings.include.
-                if (( !settings.exclude.empty() && 
+                if (( !settings.exclude.empty() &&
                       std::find(settings.exclude.begin(), settings.exclude.end(), s.id) != settings.exclude.end()) ||
                     ( !settings.include.empty() &&
                       std::find(settings.include.begin(), settings.include.end(), s.id) == settings.include.end()))
@@ -196,14 +196,14 @@ namespace base
         /*
          * Read sampled params
          */
-        vector<clustPar> readSampledParams (Model &evoModels, const Settings &s)
+        vector<clustPar> readSampledParams (Model &evoModels, const GlobalSettings &s)
         {
             auto acceptStage = [&s](int stage){ return (stage == 3) || s.includeBurnin; };
 
             return readSampledParams(s.files.output + ".res", evoModels, s, acceptStage);
         }
 
-        vector<clustPar> readSampledParams (string filename, Model &evoModels, const Settings &s, std::function<bool(int)> acceptStage)
+        vector<clustPar> readSampledParams (string filename, Model &evoModels, const GlobalSettings &s, std::function<bool(int)> acceptStage)
         {
             vector<clustPar> sampledPars;
 

@@ -12,7 +12,7 @@
 #include <thread>
 
 #include "IO/BackingStore.hpp"
-#include "Settings.hpp"
+#include "GlobalSettings.hpp"
 #include "Star.hpp"
 
 
@@ -124,7 +124,7 @@ namespace base
             void parallelFor(const unsigned int size, std::function<void(const unsigned int)> func);
         };
 
-        std::pair<std::vector<std::string>, std::vector<StellarSystem>> readPhotometry (std::ifstream &fin, std::vector<double> &filterPriorMin, std::vector<double> &filterPriorMax, const Settings &settings);
+        std::pair<std::vector<std::string>, std::vector<StellarSystem>> readPhotometry (std::ifstream &fin, std::vector<double> &filterPriorMin, std::vector<double> &filterPriorMax, const GlobalSettings &settings);
 
         class InvalidPhotometry : public std::runtime_error
         {
@@ -161,8 +161,8 @@ namespace base
             AdaptiveMcmcStage stage;
         };
 
-        std::vector<clustPar> readSampledParams (Model&, const Settings&);
-        std::vector<clustPar> readSampledParams (std::string, Model &evoModels, const Settings &s, std::function<bool(int)>);
+        std::vector<clustPar> readSampledParams (Model&, const GlobalSettings&);
+        std::vector<clustPar> readSampledParams (std::string, Model &evoModels, const GlobalSettings &s, std::function<bool(int)>);
     }
 }
 

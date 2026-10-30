@@ -23,22 +23,22 @@ int main (int argc, char *argv[])
         // Setup settings
         settings.loadSettings (argc, argv);
 
-        if (settings.seed == std::numeric_limits<uint32_t>::max())
+        if (settings.global.seed == std::numeric_limits<uint32_t>::max())
         {
             srand(std::time(0));
-            settings.seed = rand();
+            settings.global.seed = rand();
 
-            cout << "Seed: " << settings.seed << endl;
+            cout << "Seed: " << settings.global.seed << endl;
         }
 
 
         SinglePopBackingStore *mcmcStore = nullptr;
         FieldStarLikelihoodBackingStore *fieldStarStore = nullptr;
 
-        mcmcStore = new SinglePopMcmc_FileBackingStore(settings.files.output);
+        mcmcStore = new SinglePopMcmc_FileBackingStore(settings.global.files.output);
 
         // If you actually need FSLikelihood, uncomment the line below and comment the following line.
-        // fieldStarStore = new FieldStarLikelihood_FileBackingStore(settings.files.output);
+        // fieldStarStore = new FieldStarLikelihood_FileBackingStore(settings.global.files.output);
         fieldStarStore = new NullBackingStore<FieldStarLikelihoodRecord>();
 
         MpiMcmcApplication master(settings,

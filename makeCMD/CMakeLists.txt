@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 2.8...3.26.0)
 
-file(GLOB MAKECMD_FILES makeCMD.cpp) # *.cpp *.hpp)
-file(GLOB MAKECMDS_FILES makeCMDs.cpp) # *.cpp *.hpp)
-file(GLOB MAKECMDWD_FILES makeCMDwd.cpp) # *.cpp *.hpp)
+set(SETTINGS_FILES Settings.cpp Settings.hpp)
+
+file(GLOB MAKECMD_FILES makeCMD.cpp ${SETTINGS_FILES})
+file(GLOB MAKECMDS_FILES makeCMDs.cpp ${SETTINGS_FILES})
+file(GLOB MAKECMDWD_FILES makeCMDwd.cpp ${SETTINGS_FILES})
 
 include_directories( ${YAML_CPP_INCLUDE_DIRS} )
 

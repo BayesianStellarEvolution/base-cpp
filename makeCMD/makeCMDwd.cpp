@@ -30,7 +30,7 @@ class Application
 {
   public:
     Application(Settings s)
-        : wdEvoModels(makeModel(s)), settings(s)
+        : wdEvoModels(makeModel(s.global)), settings(s)
     {}
 
     ~Application()
@@ -51,23 +51,23 @@ void Application::run()
     Cluster clust;
 
     // Standard cluster parameters
-    clust.feh = settings.cluster.starting.Fe_H;
-    clust.priorMean[FEH] = settings.cluster.priorMeans.Fe_H;
+    clust.feh = settings.global.cluster.starting.Fe_H;
+    clust.priorMean[FEH] = settings.global.cluster.priorMeans.Fe_H;
 
-    clust.mod = settings.cluster.starting.distMod;
-    clust.priorMean[MOD] = settings.cluster.priorMeans.distMod;
+    clust.mod = settings.global.cluster.starting.distMod;
+    clust.priorMean[MOD] = settings.global.cluster.priorMeans.distMod;
 
-    clust.abs = settings.cluster.starting.Av;
-    clust.priorMean[ABS] = fabs(settings.cluster.priorMeans.Av);
+    clust.abs = settings.global.cluster.starting.Av;
+    clust.priorMean[ABS] = fabs(settings.global.cluster.priorMeans.Av);
 
-    clust.age = settings.cluster.starting.logAge;
-    clust.priorMean[AGE] = settings.cluster.priorMeans.logAge;
+    clust.age = settings.global.cluster.starting.logAge;
+    clust.priorMean[AGE] = settings.global.cluster.priorMeans.logAge;
 
-    clust.carbonicity = settings.cluster.starting.carbonicity;
-    clust.priorMean[CARBONICITY] = settings.cluster.priorMeans.carbonicity;
+    clust.carbonicity = settings.global.cluster.starting.carbonicity;
+    clust.priorMean[CARBONICITY] = settings.global.cluster.priorMeans.carbonicity;
 
-    clust.yyy = settings.cluster.starting.Y;
-    clust.priorMean[YYY] = settings.cluster.priorMeans.Y;
+    clust.yyy = settings.global.cluster.starting.Y;
+    clust.priorMean[YYY] = settings.global.cluster.priorMeans.Y;
 
     // IFMR parameters
     clust.ifmrSlope = clust.priorMean[IFMR_SLOPE] = 0.08;
@@ -78,7 +78,7 @@ void Application::run()
     else
         clust.ifmrQuadCoef = clust.priorMean[IFMR_QUADCOEF] = 0.08;
 
-    clust.setM_wd_up(settings.whiteDwarf.M_wd_up);
+    clust.setM_wd_up(settings.global.whiteDwarf.M_wd_up);
 
     {
         vector<string> msFilters = wdEvoModels.mainSequenceEvol->getAvailableFilters();
@@ -119,7 +119,7 @@ void Application::run()
     auto interpIsochrone = interpolateIsochrone(clust, *isochrone);
 
     {
-        string filename = settings.files.output + ".wda";
+        string filename = settings.global.files.output + ".wda";
 
         ofstream fout(filename);
 
@@ -158,7 +158,7 @@ void Application::run()
     }
 
     {
-        string filename = settings.files.output + ".wdb";
+        string filename = settings.global.files.output + ".wdb";
 
         ofstream fout(filename);
 
@@ -215,12 +215,12 @@ std::pair<Isochrone, Isochrone> Application::interpolateIsochrone(const Cluster 
         star.primary.wdType = WdAtmosphere::DA;
         star.secondary.wdType = WdAtmosphere::DA;
 
-        wDAEeps.emplace_back(0, star.primary.mass, star.deriveCombinedMags(clust, wdEvoModels, isochrone, settings.modIsParallax));
+        wDAEeps.emplace_back(0, star.primary.mass, star.deriveCombinedMags(clust, wdEvoModels, isochrone, settings.global.modIsParallax));
 
         star.primary.wdType = WdAtmosphere::DB;
         star.secondary.wdType = WdAtmosphere::DB;
 
-        wDBEeps.emplace_back(0, star.primary.mass, star.deriveCombinedMags(clust, wdEvoModels, isochrone, settings.modIsParallax));
+        wDBEeps.emplace_back(0, star.primary.mass, star.deriveCombinedMags(clust, wdEvoModels, isochrone, settings.global.modIsParallax));
     }
 
     return {{clust.age, wDAEeps}, {clust.age, wDBEeps}};
@@ -234,12 +234,12 @@ int main (int argc, char *argv[])
 
     settings.loadSettings (argc, argv);
 
-    if (settings.seed == std::numeric_limits<uint32_t>::max())
+    if (settings.global.seed == std::numeric_limits<uint32_t>::max())
     {
         srand(std::time(0));
-        settings.seed = rand();
+        settings.global.seed = rand();
 
-        cout << "Seed: " << settings.seed << endl;
+        cout << "Seed: " << settings.global.seed << endl;
     }
 
     Application(settings).run();

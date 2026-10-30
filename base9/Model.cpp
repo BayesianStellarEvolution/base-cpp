@@ -71,7 +71,7 @@ namespace internal
     }
 }
 
-const Model makeModel(const Settings &s)
+const Model makeModel(const GlobalSettings &s)
 {
     if (s.verbose)
         cout << "Reading models..." << std::flush;

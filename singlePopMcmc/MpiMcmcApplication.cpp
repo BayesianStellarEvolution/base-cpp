@@ -37,49 +37,47 @@ void ensurePriors(const Settings &s, const Cluster &clust)
 
     // Parallax
     // Bounded between 1 and 10^5 parsecs
-    else if (s.modIsParallax && clust.mod < 0.00001)
+    else if (s.global.modIsParallax && clust.mod < 0.00001)
         throw InvalidCluster("Low parallax");
-    else if (s.modIsParallax && clust.mod > 1.0)
+    else if (s.global.modIsParallax && clust.mod > 1.0)
         throw InvalidCluster("High parallax");
 }
 
 MpiMcmcApplication::MpiMcmcApplication(Settings &s,
                                        SinglePopBackingStore *mcmcStore,
                                        FieldStarLikelihoodBackingStore *fieldStarLikelihood)
-    : evoModels(makeModel(s)), settings(s)
-    , gen(uint32_t(s.seed * uint32_t(2654435761))) // Applies Knuth's multiplicative hash for obfuscation (TAOCP Vol. 3)
+    : evoModels(makeModel(s.global)), settings(s)
+    , gen(uint32_t(s.global.seed * uint32_t(2654435761))) // Applies Knuth's multiplicative hash for obfuscation (TAOCP Vol. 3)
     , mcmcStore(mcmcStore), fieldStarLikelihood(fieldStarLikelihood)
-    , pool(s.threads)
+    , pool(s.global.threads)
 {
-    N_WD_MASS1 = s.wdInterpolationPower == 0 ? 8000 // Old default
-                                             : s.wdInterpolationPower > 0 ? 4096 << s.wdInterpolationPower // 2^(12 + wdInterpolationPower)
-                                                                          : 4096 >> -s.wdInterpolationPower;
+    N_WD_MASS1 = GlobalSettings::calcWdMassSteps(s.wdInterpolationPower);
 
     ctrl.priorVar.fill(0);
 
-    clust.feh = settings.cluster.starting.Fe_H;
-    clust.priorMean[FEH] = settings.cluster.priorMeans.Fe_H;
-    ctrl.priorVar[FEH]   = settings.cluster.priorSigma.Fe_H;
+    clust.feh = settings.global.cluster.starting.Fe_H;
+    clust.priorMean[FEH] = settings.global.cluster.priorMeans.Fe_H;
+    ctrl.priorVar[FEH]   = settings.global.cluster.priorSigma.Fe_H;
 
-    clust.mod = settings.cluster.starting.distMod;
-    clust.priorMean[MOD] = settings.cluster.priorMeans.distMod;
-    ctrl.priorVar[MOD]   = settings.cluster.priorSigma.distMod;
+    clust.mod = settings.global.cluster.starting.distMod;
+    clust.priorMean[MOD] = settings.global.cluster.priorMeans.distMod;
+    ctrl.priorVar[MOD]   = settings.global.cluster.priorSigma.distMod;
 
-    clust.abs = settings.cluster.starting.Av;
-    clust.priorMean[ABS] = fabs(settings.cluster.priorMeans.Av);
-    ctrl.priorVar[ABS]   = settings.cluster.priorSigma.Av;
+    clust.abs = settings.global.cluster.starting.Av;
+    clust.priorMean[ABS] = fabs(settings.global.cluster.priorMeans.Av);
+    ctrl.priorVar[ABS]   = settings.global.cluster.priorSigma.Av;
 
-    clust.age = settings.cluster.starting.logAge;
-    clust.priorMean[AGE] = settings.cluster.priorMeans.logAge;
-    ctrl.priorVar[AGE]   = settings.cluster.priorSigma.logAge;
+    clust.age = settings.global.cluster.starting.logAge;
+    clust.priorMean[AGE] = settings.global.cluster.priorMeans.logAge;
+    ctrl.priorVar[AGE]   = settings.global.cluster.priorSigma.logAge;
 
-    clust.carbonicity = settings.cluster.starting.carbonicity;
-    clust.priorMean[CARBONICITY] = settings.cluster.priorMeans.carbonicity;
-    ctrl.priorVar[CARBONICITY]   = settings.cluster.priorSigma.carbonicity;
+    clust.carbonicity = settings.global.cluster.starting.carbonicity;
+    clust.priorMean[CARBONICITY] = settings.global.cluster.priorMeans.carbonicity;
+    ctrl.priorVar[CARBONICITY]   = settings.global.cluster.priorSigma.carbonicity;
 
-    clust.yyy = settings.cluster.starting.Y;
-    clust.priorMean[YYY] = settings.cluster.priorMeans.Y;
-    ctrl.priorVar[YYY]   = settings.cluster.priorSigma.Y;
+    clust.yyy = settings.global.cluster.starting.Y;
+    clust.priorMean[YYY] = settings.global.cluster.priorMeans.Y;
+    ctrl.priorVar[YYY]   = settings.global.cluster.priorSigma.Y;
 
 
     if (evoModels.IFMR <= 3 || evoModels.IFMR >= 12)
@@ -110,7 +108,7 @@ MpiMcmcApplication::MpiMcmcApplication(Settings &s,
     else
         clust.ifmrQuadCoef = clust.priorMean[IFMR_QUADCOEF] = 0.08;
 
-    clust.setM_wd_up(settings.whiteDwarf.M_wd_up);
+    clust.setM_wd_up(settings.global.whiteDwarf.M_wd_up);
 
     for (auto &var : ctrl.priorVar)
     {
@@ -217,16 +215,16 @@ void MpiMcmcApplication::readPhotometry()
     // open files for reading (data) and writing
     // rData implcitly relies on going out of scope to close the photometry file
     // This is awful, but pretty (since this code is, at time of writing, in restricted, anonymous scope
-    std::ifstream rData(settings.files.phot);
+    std::ifstream rData(settings.global.files.phot);
 
     if (!rData)
     {
-        cerr << "***Error: Photometry file " << settings.files.phot << " was not found.***" << endl;
+        cerr << "***Error: Photometry file " << settings.global.files.phot << " was not found.***" << endl;
         cerr << "[Exiting...]" << endl;
         exit (-1);
     }
 
-    auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings);
+    auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings.global);
     auto filterNames = ret.first;
 
     for (auto r : ret.second)
@@ -261,11 +259,11 @@ void MpiMcmcApplication::readPhotometry()
     }
 
 
-    evoModels.restrictFilters(filterNames, settings.allowInvalidModels);
+    evoModels.restrictFilters(filterNames, settings.global.allowInvalidModels);
 
-    if (settings.cluster.index < 0 || static_cast<size_t>(settings.cluster.index) > filterNames.size())
+    if (settings.global.cluster.index < 0 || static_cast<size_t>(settings.global.cluster.index) > filterNames.size())
     {
-        cerr << "***Error: " << settings.cluster.index << " not a valid magnitude index." << endl;
+        cerr << "***Error: " << settings.global.cluster.index << " not a valid magnitude index." << endl;
         cerr << "[Exiting...]" << endl;
         exit (1);
     }
@@ -288,7 +286,7 @@ void MpiMcmcApplication::readPhotometry()
 
 void MpiMcmcApplication::verifyModelBounds()
 {
-    if (settings.verbose)
+    if (settings.global.verbose)
     {
         cout << std::setprecision(3) << std::fixed;
         cout << "Model boundaries are (" << evoModels.mainSequenceEvol->getMinAge()
@@ -297,13 +295,13 @@ void MpiMcmcApplication::verifyModelBounds()
         cout << "Binaries are " << (settings.noBinaries ? "OFF" : "ON") << endl;
     }
 
-    if (   settings.cluster.starting.logAge < evoModels.mainSequenceEvol->getMinAge()
-        || settings.cluster.starting.logAge > evoModels.mainSequenceEvol->getMaxAge())
+    if (   settings.global.cluster.starting.logAge < evoModels.mainSequenceEvol->getMinAge()
+        || settings.global.cluster.starting.logAge > evoModels.mainSequenceEvol->getMaxAge())
     {
-        if (! settings.overrideBounds)
+        if (! settings.global.overrideBounds)
         {
             cerr << std::setprecision(3) << std::fixed
-                 << "\n***Error: Starting value \"logAge\" (" << settings.cluster.starting.logAge
+                 << "\n***Error: Starting value \"logAge\" (" << settings.global.cluster.starting.logAge
                  << ") is outside the model boundaries (" << evoModels.mainSequenceEvol->getMinAge()
                  << ", " << evoModels.mainSequenceEvol->getMaxAge()
                  << ").\n   Use the `--overrideBounds` flag if you really want this.\n[Exiting...]"
@@ -311,10 +309,10 @@ void MpiMcmcApplication::verifyModelBounds()
 
             exit(-1);
         }
-        else if (settings.verbose)
+        else if (settings.global.verbose)
         {
             cout << std::setprecision(3) << std::fixed
-                 << "\n***Warning: logAge (" << settings.cluster.starting.logAge
+                 << "\n***Warning: logAge (" << settings.global.cluster.starting.logAge
                  << ") is outside the model boundaries (" << evoModels.mainSequenceEvol->getMinAge()
                  << ", " << evoModels.mainSequenceEvol->getMaxAge()
                  << ").\n   Continuing due to `--overrideBounds` flag." << endl;
@@ -339,13 +337,13 @@ void MpiMcmcApplication::initChain()
 
 void MpiMcmcApplication::betaBinomialBurnin(Chain<Cluster>& chain, std::function<void(const Cluster&)>& checkPriors, std::function<double(Cluster&)>& logPostFunc)
 {
-    if ( settings.verbose )
+    if ( settings.global.verbose )
         cout << "\nRunning burnin..." << flush;
 
     auto proposalFunc = std::bind(&MpiMcmcApplication::propClustBigSteps, this, _1, std::cref(ctrl), std::cref(stepSize));
     chain.run(AdaptiveMcmcStage::FixedBurnin, proposalFunc, logPostFunc, checkPriors, settings.singlePopMcmc.adaptiveBigSteps);
 
-    if ( settings.verbose )
+    if ( settings.global.verbose )
         cout << " Complete (acceptanceRatio = " << chain.acceptanceRatio() << ")" << endl;
 
     chain.reset(); // Reset the chain to forget this part of the burnin.
@@ -388,9 +386,9 @@ void MpiMcmcApplication::betaBinomialBurnin(Chain<Cluster>& chain, std::function
         descent = descent > 0 ? descent - 1 : 0;
     } while (chain.acceptableCumulative() < (0.50 + (2 * chain.stdDev()))); // Is this right?
 
-    if ( settings.veryVerbose )
+    if ( settings.global.veryVerbose )
     {
-        auto distanceName = settings.modIsParallax ? "    parallax" : "     modulus";
+        auto distanceName = settings.global.modIsParallax ? "    parallax" : "     modulus";
 
         const array<string, NPARAMS> paramNames = {  "      logAge",
                                                      "           Y",
@@ -413,7 +411,7 @@ void MpiMcmcApplication::betaBinomialBurnin(Chain<Cluster>& chain, std::function
 
 void MpiMcmcApplication::stage1Burnin(Chain<Cluster>& chain, std::function<void(const Cluster&)>& checkPriors, std::function<double(Cluster&)>& logPostFunc)
 {
-    if ( settings.verbose )
+    if ( settings.global.verbose )
         cout << "\nRunning Stage 1 burnin..." << flush;
 
     auto proposalFunc = std::bind(&MpiMcmcApplication::propClustBigSteps, this, _1, std::cref(ctrl), std::cref(stepSize));
@@ -427,7 +425,7 @@ void MpiMcmcApplication::stage1Burnin(Chain<Cluster>& chain, std::function<void(
         exit(-1);
     }
 
-    if ( settings.verbose )
+    if ( settings.global.verbose )
         cout << " Complete (acceptanceRatio = " << chain.acceptanceRatio() << ")" << endl;
 
     chain.reset(); // Reset the chain to forget this part of the burnin.
@@ -435,7 +433,7 @@ void MpiMcmcApplication::stage1Burnin(Chain<Cluster>& chain, std::function<void(
 
 void MpiMcmcApplication::stage2Burnin(Chain<Cluster>& chain, std::function<void(const Cluster&)>& checkPriors, std::function<double(Cluster&)>& logPostFunc)
 {
-    if ( settings.verbose )
+    if ( settings.global.verbose )
         cout << "\nRunning Stage 2 (adaptive) burnin..." << endl;
 
     int  adaptiveBurnIter = 0;
@@ -492,14 +490,14 @@ void MpiMcmcApplication::stage2Burnin(Chain<Cluster>& chain, std::function<void(
 
             if (acceptedOne)
             {
-                if ( settings.verbose )
+                if ( settings.global.verbose )
                     cout << "  Leaving adaptive burnin early with an acceptance ratio of " << acceptanceRatio << " (iteration " << adaptiveBurnIter + settings.singlePopMcmc.adaptiveBigSteps << ")" << endl;
 
                 break;
             }
             else
             {
-                if ( settings.verbose )
+                if ( settings.global.verbose )
                     cout << "    Acceptance ratio: " << acceptanceRatio << ". Trying for trend." << endl;
                 acceptedOne = true;
             }
@@ -508,7 +506,7 @@ void MpiMcmcApplication::stage2Burnin(Chain<Cluster>& chain, std::function<void(
         {
             acceptedOne = false;
 
-            if ( settings.verbose )
+            if ( settings.global.verbose )
                 cout << "    Acceptance ratio: " << acceptanceRatio << ". Retrying." << endl;
 
             scaleStepSizes(stepSize, chain.acceptanceRatio()); // Adjust step sizes
@@ -519,24 +517,24 @@ void MpiMcmcApplication::stage2Burnin(Chain<Cluster>& chain, std::function<void(
 
 void MpiMcmcApplication::stage3Burnin(Chain<Cluster>& chain, std::function<void(const Cluster&)>& checkPriors, std::function<double(Cluster&)>& logPostFunc)
 {
-    if ( settings.verbose )
+    if ( settings.global.verbose )
         cout << "\nStarting adaptive run... " << flush;
 
     // Make sure and pull the covariance matrix before resetting the chain
-    auto proposalFunc = std::bind(&MpiMcmcApplication::propClustCorrelated, this, _1, std::cref(ctrl), chain.makeCholeskyDecomp(settings.veryVerbose));
+    auto proposalFunc = std::bind(&MpiMcmcApplication::propClustCorrelated, this, _1, std::cref(ctrl), chain.makeCholeskyDecomp(settings.global.veryVerbose));
 
     chain.reset();
 
     chain.run(AdaptiveMcmcStage::AdaptiveMainRun, proposalFunc, logPostFunc, checkPriors, settings.singlePopMcmc.stage3Iter);
 
-    if ( settings.verbose )
+    if ( settings.global.verbose )
     {
         cout << " Preliminary acceptanceRatio = " << chain.acceptanceRatio() << endl;
     }
 
-    if ( settings.veryVerbose )
+    if ( settings.global.veryVerbose )
     {
-        auto distanceName = settings.modIsParallax ? "    parallax" : "     modulus";
+        auto distanceName = settings.global.modIsParallax ? "    parallax" : "     modulus";
 
         const array<string, NPARAMS> paramNames = {  "      logAge",
                                                      "           Y",
@@ -562,7 +560,7 @@ void MpiMcmcApplication::mainRun(Chain<Cluster>& chain, std::function<void(const
     // Main run proceeds in increments of 1, adapting the covariance matrix after every increment
     for (auto iters = 0; iters < ctrl.nIter; ++iters)
     {
-        auto proposalFunc = std::bind(&MpiMcmcApplication::propClustCorrelated, this, _1, std::cref(ctrl), chain.makeCholeskyDecomp(settings.veryVerbose));
+        auto proposalFunc = std::bind(&MpiMcmcApplication::propClustCorrelated, this, _1, std::cref(ctrl), chain.makeCholeskyDecomp(settings.global.veryVerbose));
 
         chain.run(AdaptiveMcmcStage::MainRun, proposalFunc, logPostFunc, checkPriors, 1, ctrl.thin);
     }
@@ -572,7 +570,7 @@ void MpiMcmcApplication::mainRun(Chain<Cluster>& chain, std::function<void(const
 void MpiMcmcApplication::loadPreviousBurnin(string filename, Chain<Cluster>& chain)
 {
     auto acceptStage = [](int stage) { return stage == (int)AdaptiveMcmcStage::AdaptiveBurnin; };
-    auto samples = base::utility::readSampledParams(filename, evoModels, settings, acceptStage);
+    auto samples = base::utility::readSampledParams(filename, evoModels, settings.global, acceptStage);
 
     for (auto sample : samples)
     {
@@ -598,7 +596,7 @@ void MpiMcmcApplication::loadPreviousBurnin(string filename, Chain<Cluster>& cha
 int MpiMcmcApplication::run()
 {
     Chain<Cluster> chain(static_cast<uint32_t>(std::uniform_int_distribution<>()(gen)),
-                         ctrl.priorVar, clust, *mcmcStore, settings.modIsParallax);
+                         ctrl.priorVar, clust, *mcmcStore, settings.global.modIsParallax);
 
 
     verifyModelBounds();
@@ -608,7 +606,7 @@ int MpiMcmcApplication::run()
     fieldStarLikelihood->save({fsLike});
 
     // For testing, exit after model and photometry are loaded
-    if (settings.exitAfterLoad) { exit(0); }
+    if (settings.global.exitAfterLoad) { exit(0); }
 
     // Burnin
     allocateSSEMem();
@@ -617,17 +615,17 @@ int MpiMcmcApplication::run()
     std::function<double(Cluster&)> logPostFunc = std::bind(&MpiMcmcApplication::logPostStep, this, _1);
     std::function<void(const Cluster&)> checkPriors = std::bind(&ensurePriors, std::cref(settings), _1);
 
-    if (settings.startWithBurnin.empty())
+    if (settings.global.startWithBurnin.empty())
     {
         stage1Burnin(chain, checkPriors, logPostFunc);
         stage2Burnin(chain, checkPriors, logPostFunc);
     }
     else
     {
-        loadPreviousBurnin(settings.startWithBurnin, chain);
+        loadPreviousBurnin(settings.global.startWithBurnin, chain);
     }
 
-    if (!settings.stopAfterBurnin)
+    if (!settings.global.stopAfterBurnin)
     {
         // Main run
         // Overwrite the burnin photometry set with the full photometry set
@@ -642,7 +640,7 @@ int MpiMcmcApplication::run()
 
 
         // Post-run
-        if ( settings.verbose )
+        if ( settings.global.verbose )
         {
             cout << "\nFinal acceptance ratio: " << chain.acceptanceRatio() << "\n" << endl;
 
@@ -797,11 +795,11 @@ double MpiMcmcApplication::logPostStep(Cluster &propClust)
 
                 s.wdType     = WdAtmosphere::DA;
                 primaryMags  = s.getMags(propClust, evoModels, *isochrone);
-                daCombinedMags = StellarSystem::deriveCombinedMags(propClust, evoModels, *isochrone, primaryMags, secondaryMags, settings.modIsParallax);
+                daCombinedMags = StellarSystem::deriveCombinedMags(propClust, evoModels, *isochrone, primaryMags, secondaryMags, settings.global.modIsParallax);
 
                 s.wdType     = WdAtmosphere::DB;
                 primaryMags  = s.getMags(propClust, evoModels, *isochrone);
-                dbCombinedMags = StellarSystem::deriveCombinedMags(propClust, evoModels, *isochrone, primaryMags, secondaryMags, settings.modIsParallax);
+                dbCombinedMags = StellarSystem::deriveCombinedMags(propClust, evoModels, *isochrone, primaryMags, secondaryMags, settings.global.modIsParallax);
 
                 for (size_t i = 0; i < wdSize; ++i)
                 {
@@ -846,12 +844,12 @@ double MpiMcmcApplication::logPostStep(Cluster &propClust)
 
         if (settings.noBinaries)
 #ifndef IS_ARM
-	    post = margEvolveNoBinaries (propClust, evoModels, *isochrone, pool, sysVars, sysVar2, sysObs, msSize, howManyFiltsAligned, howManyFilts, settings.modIsParallax, settings.eepInterpolationPower);
+	    post = margEvolveNoBinaries (propClust, evoModels, *isochrone, pool, sysVars, sysVar2, sysObs, msSize, howManyFiltsAligned, howManyFilts, settings.global.modIsParallax, settings.eepInterpolationPower);
 #else
-	    post = margEvolveNoBinaries (propClust, evoModels, *isochrone, pool, msSystems, settings.modIsParallax, settings.eepInterpolationPower);
+	    post = margEvolveNoBinaries (propClust, evoModels, *isochrone, pool, msSystems, settings.global.modIsParallax, settings.eepInterpolationPower);
 #endif
 	else
-            post = margEvolveWithBinary (propClust, msSystems, evoModels, *isochrone, pool, settings.modIsParallax, settings.eepInterpolationPower);
+            post = margEvolveWithBinary (propClust, msSystems, evoModels, *isochrone, pool, settings.global.modIsParallax, settings.eepInterpolationPower);
 
         for (size_t i = 0; i < msSize; ++i)
         {
@@ -876,7 +874,7 @@ double MpiMcmcApplication::wdGridMass (int point) const
 {
     // I think this only gets calculated once, but I can't quite be sure...
     // It may not even matter, but every little bit helps, eh? And hey, preoptimization...
-    static const double dWdMass1 = (settings.whiteDwarf.M_wd_up - MIN_MASS1) / (double) N_WD_MASS1;
+    static const double dWdMass1 = (settings.global.whiteDwarf.M_wd_up - MIN_MASS1) / (double) N_WD_MASS1;
 
     return MIN_MASS1 + (dWdMass1 * point);
 }

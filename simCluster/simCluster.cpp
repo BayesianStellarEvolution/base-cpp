@@ -62,15 +62,15 @@ int run(int argc, char *argv[])
 
     settings.loadSettings (argc, argv);
 
-    if (settings.seed == std::numeric_limits<uint32_t>::max())
+    if (settings.global.seed == std::numeric_limits<uint32_t>::max())
     {
         srand(std::time(0));
-        settings.seed = rand();
+        settings.global.seed = rand();
 
-        cout << "Seed: " << settings.seed << endl;
+        cout << "Seed: " << settings.global.seed << endl;
     }
 
-    Model evoModels = makeModel(settings);
+    Model evoModels = makeModel(settings.global);
 
     vector<string> filters;
 
@@ -118,22 +118,22 @@ int run(int argc, char *argv[])
 
     evoModels.restrictFilters(filters, false);
 
-    theCluster.setM_wd_up(settings.whiteDwarf.M_wd_up);
+    theCluster.setM_wd_up(settings.global.whiteDwarf.M_wd_up);
     fractionBinary = settings.simCluster.percentBinary;
 //    fractionDB = settings.simCluster.percentDB;
-    theCluster.mod = settings.cluster.starting.distMod;
-    theCluster.abs = settings.cluster.starting.Av;
-    theCluster.age = settings.cluster.starting.logAge;
-    theCluster.feh = settings.cluster.starting.Fe_H;
-    theCluster.yyy = settings.cluster.starting.Y;
-    theCluster.carbonicity = settings.cluster.starting.carbonicity;
+    theCluster.mod = settings.global.cluster.starting.distMod;
+    theCluster.abs = settings.global.cluster.starting.Av;
+    theCluster.age = settings.global.cluster.starting.logAge;
+    theCluster.feh = settings.global.cluster.starting.Fe_H;
+    theCluster.yyy = settings.global.cluster.starting.Y;
+    theCluster.carbonicity = settings.global.cluster.starting.carbonicity;
 
     fractionBinary /= 100.;     // input as percentages, use as fractions
 //    fractionDB /= 100.;
 
-    seed = settings.seed;
+    seed = settings.global.seed;
 
-    strcpy (w_file, (settings.files.output + ".sim.out").c_str());
+    strcpy (w_file, (settings.global.files.output + ".sim.out").c_str());
     if ((w_ptr = fopen (w_file, "w")) == NULL)
     {
         cerr << "\nFile " << w_file << " was not available for writing - exiting" << endl;
@@ -206,7 +206,7 @@ int run(int argc, char *argv[])
         fprintf (w_ptr, "%4d ", i + 1); // output primary star data
 
         // Evolve secondary star by itself
-        auto photometry = theStar.deriveCombinedMags(theCluster, evoModels, *isochrone, settings.modIsParallax);
+        auto photometry = theStar.deriveCombinedMags(theCluster, evoModels, *isochrone, settings.global.modIsParallax);
 
         for (size_t f = 0; f < filters.size(); ++f)
             fprintf (w_ptr, "%6.3f ", photometry[f] < 99. ? photometry[f] : 99.999);  // output photometry for whole system
@@ -363,7 +363,7 @@ int run(int argc, char *argv[])
 
             theStar.setMassRatio(settings.simCluster.noWDs ? 0 : std::generate_canonical<double, 53>(gen));
 
-            photometry = theStar.deriveCombinedMags(theCluster, evoModels, *isochrone, settings.modIsParallax);
+            photometry = theStar.deriveCombinedMags(theCluster, evoModels, *isochrone, settings.global.modIsParallax);
 
         } while (photometry[2] < minV || photometry[2] > maxV || photometry[1] - photometry[2] < -0.5 || photometry[1] - photometry[2] > 1.7);
 

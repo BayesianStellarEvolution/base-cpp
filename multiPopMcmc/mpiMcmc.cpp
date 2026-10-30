@@ -21,23 +21,23 @@ int main (int argc, char *argv[])
 
         cout << "Bayesian Analysis of Stellar Evolution (Multiple Populations)" << endl;
 
-        if (settings.seed == std::numeric_limits<uint32_t>::max())
+        if (settings.global.seed == std::numeric_limits<uint32_t>::max())
         {
             srand(std::time(0));
-            settings.seed = rand();
+            settings.global.seed = rand();
 
-            cout << "Seed: " << settings.seed << endl;
+            cout << "Seed: " << settings.global.seed << endl;
         }
 
         MultiPopBackingStore *mcmcStore = nullptr;
         StarParamsBackingStore *paramsStore = nullptr;
         FieldStarLikelihoodBackingStore *fieldStarStore = nullptr;
 
-        mcmcStore      = new MultiPopMcmc_FileBackingStore(settings.files.output);
-        paramsStore    = new StarParams_FileBackingStore(settings.files.output);
+        mcmcStore      = new MultiPopMcmc_FileBackingStore(settings.global.files.output);
+        paramsStore    = new StarParams_FileBackingStore(settings.global.files.output);
 
         // If you actually need FSLikelihood, uncomment the line below and comment the following line.
-        // fieldStarStore = new FieldStarLikelihood_FileBackingStore(settings.files.output);
+        // fieldStarStore = new FieldStarLikelihood_FileBackingStore(settings.global.files.output);
         fieldStarStore = new NullBackingStore<FieldStarLikelihoodRecord>();
 
         MpiMcmcApplication master(settings,

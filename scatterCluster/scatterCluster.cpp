@@ -151,12 +151,12 @@ int main (int argc, char *argv[])
 
     settings.loadSettings (argc, argv);
 
-    if (settings.seed == std::numeric_limits<uint32_t>::max())
+    if (settings.global.seed == std::numeric_limits<uint32_t>::max())
     {
         srand(std::time(0));
-        settings.seed = rand();
+        settings.global.seed = rand();
 
-        cout << "Seed: " << settings.seed << endl;
+        cout << "Seed: " << settings.global.seed << endl;
     }
 
     {
@@ -167,7 +167,7 @@ int main (int argc, char *argv[])
         // open files for reading (data) and writing
         // rData implcitly relies on going out of scope to close the photometry file
         // This is awful, but pretty (since this code is, at time of writing, in restricted, anonymous scope)
-        string filename = settings.files.output + ".sim.out";
+        string filename = settings.global.files.output + ".sim.out";
         std::ifstream photin(filename);
 
         if (!photin)
@@ -177,11 +177,11 @@ int main (int argc, char *argv[])
             exit (-1);
         }
 
-        auto ret = base::utility::readPhotometry (photin, filterPriorMin, filterPriorMax, settings);
+        auto ret = base::utility::readPhotometry (photin, filterPriorMin, filterPriorMax, settings.global);
 
         filters = ret.first;
 
-        if (settings.verbose)
+        if (settings.global.verbose)
         {
             for (size_t f = 0; f < filters.size(); ++f)
                 cout << f << ' ' << filters.at(f) << endl;
@@ -233,7 +233,7 @@ int main (int argc, char *argv[])
         }
     }
 
-    std::mt19937 gen(uint32_t(settings.seed * uint32_t(2654435761))); // Applies Knuth's multiplicative hash for obfuscation (TAOCP Vol. 3)
+    std::mt19937 gen(uint32_t(settings.global.seed * uint32_t(2654435761))); // Applies Knuth's multiplicative hash for obfuscation (TAOCP Vol. 3)
 
     for (auto &s : systems)
     {
@@ -263,7 +263,7 @@ int main (int argc, char *argv[])
         }
     }
 
-    string filename = settings.files.output + ".scatter.out";
+    string filename = settings.global.files.output + ".scatter.out";
     std::ofstream fout(filename);
 
     if (!fout)

@@ -7,7 +7,7 @@
 #include "Filters.hpp"
 #include "MsRgbModel.hpp"
 #include "MsRgbModels/InvalidMsModel.hpp"
-#include "Settings.hpp"
+#include "GlobalSettings.hpp"
 #include "WdCoolingModel.hpp"
 #include "WdAtmosphereModel.hpp"
 #include "WdAtmosphereModels/InvalidAtmosphereModel.hpp"
@@ -72,6 +72,6 @@ class Model
     bool verbose;
 };
 
-const Model makeModel(const Settings &);
+const Model makeModel(const GlobalSettings &);
 
 #endif
