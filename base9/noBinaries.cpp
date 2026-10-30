@@ -156,7 +156,7 @@ vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels
                 {
                     double primaryMass = cMass + (k * dMass);
 
-                    if (primaryMass > agbTipMass)
+                    if (primaryMass >= agbTipMass)
                     {
                         primaryMass = agbTipMass;
 
@@ -450,47 +450,47 @@ vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels
         auto isoSize    = isochrone.eeps.size();
         auto nSystems   = systems.size();
 
-	for (size_t m = 0; m < isoSize - 1; ++m)
+        for (size_t m = 0; m < isoSize - 1; ++m)
         {
             double dIsoMass = isochrone.eeps[m + 1].mass - isochrone.eeps[m].mass;
 
             // In the event that we have an invalid range, skip that range
             // This generally occurs only at very high EEPs, where the masses are close together
-            if (dIsoMass < 0.0) continue;
+            if (dIsoMass > 0.0)
+            {
+                Star s;
+                vector<double> primaryMags, combinedMags;
 
-	    Star s;
-	    vector<double> primaryMags, combinedMags;
+                double dMass    = dIsoMass / isoIncrem;
+                double logdMass = __builtin_log (dMass);
 
-	    double dMass    = dIsoMass / isoIncrem;
-	    double logdMass = __builtin_log (dMass);
+                double cMass = isochrone.eeps[m].mass;
 
-	    double cMass = isochrone.eeps[m].mass;
+                for (auto k = 0; k < isoIncrem; ++k)
+                {
+                    double primaryMass = cMass + (k * dMass);
 
-	    for (auto k = 0; k < isoIncrem; ++k)
-	    {
-		double primaryMass = cMass + (k * dMass);
+                    if (primaryMass >= agbTipMass)
+                    {
+                        primaryMass = agbTipMass;
 
-		if (primaryMass >= agbTipMass)
-		{
-		    primaryMass = agbTipMass;
+                        // Kludgey way of exiting the for loop
+                        // Only works if we don't use K below here
+                        // Ensures we add the agbTip likelihood once and only once
+                        k = isoIncrem;
+                    }
 
+                    const double logPrior = clust.logPriorMass (primaryMass);
 
-		    // Kludgey way of exiting the for loop
-		    // Only works if we don't use K below here
-		    // Ensures we add the agbTip likelihood once and only once
-		    k = isoIncrem;
-		}
+                    s.mass       = primaryMass;
+                    primaryMags  = s.getMags(clust, evoModels, isochrone);
+                    combinedMags = StellarSystem::deriveCombinedMags(clust, evoModels, isochrone, primaryMags, secondaryMags, modIsParallax);
 
-		const double logPrior = clust.logPriorMass (primaryMass);
-
-		s.mass       = primaryMass;
-		primaryMags  = s.getMags(clust, evoModels, isochrone);
-		combinedMags = StellarSystem::deriveCombinedMags(clust, evoModels, isochrone, primaryMags, secondaryMags, modIsParallax);
-
-		for (size_t s = 0; s < nSystems; ++s)
-		{
-		    post[s] += __builtin_exp(systems[s].logPost (clust, evoModels, isochrone, logPrior, combinedMags) + logdMass);
-		}
+                    for (size_t s = 0; s < nSystems; ++s)
+                    {
+                        post[s] += __builtin_exp(systems[s].logPost (clust, evoModels, isochrone, logPrior, combinedMags) + logdMass);
+                    }
+                }
             }
         }
     }
