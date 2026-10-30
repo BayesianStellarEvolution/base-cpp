@@ -300,6 +300,7 @@ void Settings::fromCLI (int argc, char **argv)
 
         {"include", required_argument, 0, 0x9A},
         {"exclude", required_argument, 0, 0x99},
+        {"interpolateCMD", no_argument, 0, 0x98},
         {0, 0, 0, 0}
     };
 
@@ -572,6 +573,10 @@ void Settings::fromCLI (int argc, char **argv)
                 allowNegativeSigma = true;
                 break;
 
+            case 0x98:
+                interpolateCMD = true;
+                break;
+
             // distMod and parallax have to be handled with special care.
             case 0xC7:
                 istringstream (string (optarg)) >> cluster.starting.distMod;
@@ -606,9 +611,9 @@ void Settings::fromCLI (int argc, char **argv)
             case 0xBC:
                 istringstream (string (optarg)) >> eepInterpolationPower;
 
-                if (eepInterpolationPower < -6)
+                if (eepInterpolationPower < -5)
                 {
-                    cerr << "EEP interpolation power must be -6 or greater." << endl;
+                    cerr << "EEP interpolation power must be -5 or greater." << endl;
                     exit(EXIT_FAILURE);
                 }
 
@@ -617,9 +622,9 @@ void Settings::fromCLI (int argc, char **argv)
             case 0xBB:
                 istringstream (string (optarg)) >> wdInterpolationPower;
 
-                if (wdInterpolationPower < -13)
+                if (wdInterpolationPower < -7)
                 {
-                    cerr << "WD interpolation power must be -13 or greater." << endl;
+                    cerr << "WD interpolation power must be -7 or greater." << endl;
                     exit(EXIT_FAILURE);
                 }
 
@@ -931,18 +936,19 @@ static void printUsage ()
     cerr << "\t\t3 = Bergeron (2026 [HST-only])" << endl;
 
     cerr << "\n\t--eepInterpolationPower <int>" << endl;
-    cerr << "\t\tAdjusts the number of interpolated steps between EEPs in photometry.\n" << endl;
-    cerr << "\t\t       0 = Traditional EEP interpolation, 80 steps (default)" << endl;
-    cerr << "\t\t-5 .. -1" << endl;
-    cerr << "\t\t 1 ..  n = Configurable EEP interpolation, provides 2^(5 + n) steps." << endl;
-    cerr << "\t\t\t   1 is on the order of the traditional value. Negative numbers offer a performance boost in exchange for precision and potentially accuracy." << endl;
+    cerr << "\t\tAdjusts the number of interpolated steps between EEPs in the isochrone." << endl;
+    cerr << "\t\tThe isochrone contains ~100 EEPs; this multiplies that by the step count.\n" << endl;
+    cerr << "\t\t       0 = Traditional EEP interpolation, 80 steps per EEP interval (default)" << endl;
+    cerr << "\t\t-5 .. -1 = Reduced interpolation; -5 gives 1 step (un-interpolated model)" << endl;
+    cerr << "\t\t 1 ..  n = Configurable EEP interpolation, provides 2^(5 + n) steps per EEP interval." << endl;
+    cerr << "\t\t\t   1 (64 steps) is on the order of the traditional value." << endl;
 
     cerr << "\n\t--wdInterpolationPower <int>" << endl;
-    cerr << "\t\tAs with eepInterpolationPower, but with different bounds for a different grid.\n" << endl;
+    cerr << "\t\tAdjusts the number of WD mass grid points between MIN_MASS1 and M_wd_up.\n" << endl;
     cerr << "\t\t        0 = Traditional WD interpolation, 8000 steps (default)" << endl;
-    cerr << "\t\t-13 .. -1" << endl;
-    cerr << "\t\t  1 ..  n = Configurable WD interpolation, provides 2^(12 + n) steps." << endl;
-    cerr << "\t\t\t    1 is on the order of the traditional value. Negative numbers offer a performance boost in exchange for precision and potentially accuracy." << endl;
+    cerr << "\t\t-7 .. -1 = Reduced interpolation; -7 gives 32 steps" << endl;
+    cerr << "\t\t 1 ..  n = Configurable WD interpolation, provides 2^(12 + n) steps." << endl;
+    cerr << "\t\t\t   1 (8192 steps) is on the order of the traditional value." << endl;
 
     cerr << "\n\t--includeBurnin" << endl;
     cerr << "\t\tReturns the pre-9.6 behavior to sampleMass and sampleWDMass where all lines from" << endl;
@@ -980,6 +986,9 @@ static void printUsage ()
     cerr << "\t\t\t$ ./bin/singlePopMcmc --photFile Hyades.UBV.phot --verbose --include \"vB043,HZ4,VR7\" --exclude \"HZ4\"" << endl;
     cerr << "\n\t\t\tOutput includes:" << endl;
     cerr << "\t\t\t\tLoaded stars: 'vB043', 'VR7'" << endl;
+
+    cerr << "\n\t--interpolateCMD" << endl;
+    cerr << "\t\tEnables interpolation over the mass grid in makeCMDs, similar to the integration behavior in singlePopMcmc." << endl;
 
 }
 

@@ -28,6 +28,8 @@ class Settings
     bool noBinaries = false;
     bool overrideBounds = false;
 
+    bool interpolateCMD = false;
+
     bool exitAfterLoad = false; // Dev exit to support testing
 
     bool details = false;

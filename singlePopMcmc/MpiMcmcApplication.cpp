@@ -52,8 +52,8 @@ MpiMcmcApplication::MpiMcmcApplication(Settings &s,
     , pool(s.threads)
 {
     N_WD_MASS1 = s.wdInterpolationPower == 0 ? 8000 // Old default
-                                             : s.wdInterpolationPower > 0 ? 64 << s.wdInterpolationPower // 2^(5 + wdInterpolationPower)
-                                                                          : 64 >> -s.wdInterpolationPower;
+                                             : s.wdInterpolationPower > 0 ? 4096 << s.wdInterpolationPower // 2^(12 + wdInterpolationPower)
+                                                                          : 4096 >> -s.wdInterpolationPower;
 
     ctrl.priorVar.fill(0);
 

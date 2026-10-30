@@ -29,6 +29,8 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 
+const double MIN_MASS1 = 0.15;
+
 struct clustPar
 {
     clustPar(double age, double y, double feh, double modulus, double absorption, double carbonicity, double ifmrIntercept, double ifmrSlope, double ifmrQuadCoef, double logPost)
@@ -150,23 +152,44 @@ class Application
   public:
     Application(Settings s)
         :  evoModels(makeModel(s)), settings(s)
-    {}
+    {
+        N_WD_MASS1 = s.wdInterpolationPower == 0 ? 8000
+                                                 : s.wdInterpolationPower > 0 ? 4096 << s.wdInterpolationPower
+                                                                              : 4096 >> -s.wdInterpolationPower;
+    }
 
     ~Application()
     {}
 
     void run();
     Isochrone interpolateIsochrone(const Cluster&, const Isochrone&);
-    Isochrone interpolateWDIsochrone(const Cluster&, const Isochrone&);
+    vector<EvolutionaryPoint> interpolateWDIsochrone(const Cluster&, const Isochrone&, WdAtmosphere);
 
   private:
     Model evoModels;
     const Settings settings;
+
+    size_t N_WD_MASS1;
+
+    bool hasMSStars = false;
+    bool hasWDStars = false;
+    bool hasDA = false;
+    bool hasDB = false;
+
+    double wdGridMass(int point) const;
 };
+
+
+double Application::wdGridMass(int point) const
+{
+    double dWdMass1 = (settings.whiteDwarf.M_wd_up - MIN_MASS1) / static_cast<double>(N_WD_MASS1);
+    return MIN_MASS1 + (dWdMass1 * point);
+}
 
 
 void Application::run()
 {
+    vector<string> filterNames;
 
     // for (size_t f = 0; f < filters.size(); ++f)
     // {
@@ -201,7 +224,23 @@ void Application::run()
         }
 
         auto ret = base::utility::readPhotometry (rData, filterPriorMin, filterPriorMax, settings);
-        auto filterNames = ret.first;
+        filterNames = ret.first;
+
+        for (const auto &system : ret.second)
+        {
+            if (system.observedStatus == MSRG)
+            {
+                hasMSStars = true;
+            }
+            else if (system.observedStatus == WD)
+            {
+                hasWDStars = true;
+                if (system.primary.wdType == WdAtmosphere::DA)
+                    hasDA = true;
+                else if (system.primary.wdType == WdAtmosphere::DB)
+                    hasDB = true;
+            }
+        }
 
         evoModels.restrictFilters(filterNames, false);
     }
@@ -218,13 +257,13 @@ void Application::run()
 
     for (auto s : sampledParams)
     {
-        sampledMin = std::min(sampledMin, s.logPost);
-        sampledMax = std::max(sampledMax, s.logPost);
+        sampledMin = std::min(sampledMin, exp(s.logPost));
+        sampledMax = std::max(sampledMax, exp(s.logPost));
     }
 
     auto alpha = [=](double x){
         double delta = sampledMax - sampledMin;
-        return (x - sampledMin) / delta;
+        return (exp(x) - sampledMin) / delta;
     };
 
 
@@ -250,6 +289,9 @@ void Application::run()
 
         fout << '\n';
     }
+
+    bool outputMS = !settings.onlyWDs && hasMSStars;
+    bool outputWD = !settings.simCluster.noWDs && hasWDStars;
 
     for (auto s : sampledParams)
     {
@@ -277,21 +319,52 @@ void Application::run()
         // Set Cluster's AGBT_zmass based on the model's agbTipMass
         unique_ptr<Isochrone> isochrone(evoModels.mainSequenceEvol->deriveIsochrone(clust.feh, clust.yyy, clust.age));
 
-        // Interpolate a new isochrone
-        auto interpIsochrone = interpolateIsochrone(clust, *isochrone);
-
-        for (auto eep : interpIsochrone.eeps)
+        if (outputMS)
         {
-            for (auto mag : eep.mags)
+            // Interpolate a new isochrone
+            auto interpIsochrone = interpolateIsochrone(clust, *isochrone);
+
+            for (auto eep : interpIsochrone.eeps)
             {
-                fout << base::utility::format << mag << ' ';
+                for (auto mag : eep.mags)
+                {
+                    fout << base::utility::format << mag << ' ';
+                }
+
+                fout << base::utility::format << alpha(s.logPost);
+
+                fout << '\n';
             }
-
-            fout << base::utility::format << alpha(s.logPost);
-
-            fout << '\n';
         }
 
+        if (outputWD)
+        {
+            vector<EvolutionaryPoint> wdEeps;
+
+            if (hasDA)
+            {
+                auto daEeps = interpolateWDIsochrone(clust, *isochrone, WdAtmosphere::DA);
+                wdEeps.insert(wdEeps.end(), daEeps.begin(), daEeps.end());
+            }
+
+            if (hasDB)
+            {
+                auto dbEeps = interpolateWDIsochrone(clust, *isochrone, WdAtmosphere::DB);
+                wdEeps.insert(wdEeps.end(), dbEeps.begin(), dbEeps.end());
+            }
+
+            for (auto eep : wdEeps)
+            {
+                for (auto mag : eep.mags)
+                {
+                    fout << base::utility::format << mag << ' ';
+                }
+
+                fout << base::utility::format << alpha(s.logPost);
+
+                fout << '\n';
+            }
+        }
     }
 
     fout.close();
@@ -302,14 +375,50 @@ Isochrone Application::interpolateIsochrone(const Cluster &clust, const Isochron
 {
     vector<EvolutionaryPoint> eeps;
 
-    for ( size_t e = 0; e < isochrone.eeps.size(); ++e)
+    if (settings.interpolateCMD)
     {
-        double mass = isochrone.eeps.at(e).mass;
+        const int isoIncrem =
+            settings.eepInterpolationPower == 0 ? 80
+                                                : settings.eepInterpolationPower > 0 ? 32 << settings.eepInterpolationPower
+                                                                                     : 32 >> -settings.eepInterpolationPower;
 
-        if (mass > isochrone.agbTipMass())
-            continue;
+        auto isoSize = isochrone.eeps.size();
 
+        for (size_t m = 0; m < isoSize - 1; ++m)
         {
+            double dIsoMass = isochrone.eeps[m + 1].mass - isochrone.eeps[m].mass;
+
+            if (dIsoMass < 0.0) continue;
+
+            if (isochrone.eeps[m].mass > isochrone.agbTipMass())
+                continue;
+
+            double dMass = dIsoMass / isoIncrem;
+
+            for (auto k = 0; k < isoIncrem; ++k)
+            {
+                double mass = isochrone.eeps[m].mass + (k * dMass);
+
+                if (mass > isochrone.agbTipMass())
+                    break;
+
+                StellarSystem star;
+                star.primary.mass   = mass;
+                star.secondary.mass = 0.0;
+
+                eeps.emplace_back(m * isoIncrem + k, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.modIsParallax));
+            }
+        }
+    }
+    else
+    {
+        for (size_t e = 0; e < isochrone.eeps.size(); ++e)
+        {
+            double mass = isochrone.eeps.at(e).mass;
+
+            if (mass > isochrone.agbTipMass())
+                continue;
+
             StellarSystem star;
             star.primary.mass   = mass;
             star.secondary.mass = 0.0;
@@ -322,29 +431,51 @@ Isochrone Application::interpolateIsochrone(const Cluster &clust, const Isochron
 }
 
 
-Isochrone Application::interpolateWDIsochrone(const Cluster &clust, const Isochrone &isochrone)
+vector<EvolutionaryPoint> Application::interpolateWDIsochrone(const Cluster &clust, const Isochrone &isochrone, WdAtmosphere wdType)
 {
     vector<EvolutionaryPoint> eeps;
 
-    double mass = 0;
-    int e = 0;
-    do
+    if (settings.interpolateCMD)
     {
-        mass = isochrone.agbTipMass() + ++e * 0.05;
-
-        if (mass > 8.0)
-            continue;
-
+        for (size_t j = 0; j < N_WD_MASS1; ++j)
         {
+            double mass = wdGridMass(j);
+
+            if (mass <= isochrone.agbTipMass() || mass > settings.whiteDwarf.M_wd_up)
+                continue;
+
+            {
+                StellarSystem star;
+                star.primary.mass   = mass;
+                star.primary.wdType = wdType;
+                star.secondary.mass = 0.0;
+
+                eeps.emplace_back(j, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.modIsParallax));
+            }
+        }
+    }
+    else
+    {
+        int e = 0;
+        double mass = isochrone.agbTipMass();
+
+        while (mass < settings.whiteDwarf.M_wd_up)
+        {
+            mass = isochrone.agbTipMass() + ++e * 0.05;
+
+            if (mass > settings.whiteDwarf.M_wd_up)
+                break;
+
             StellarSystem star;
             star.primary.mass   = mass;
+            star.primary.wdType = wdType;
             star.secondary.mass = 0.0;
 
             eeps.emplace_back(e, star.primary.mass, star.deriveCombinedMags(clust, evoModels, isochrone, settings.modIsParallax));
         }
-    } while (mass < 5.0);
+    }
 
-    return {clust.age, eeps};
+    return eeps;
 }
 
 
