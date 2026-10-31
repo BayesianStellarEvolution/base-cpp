@@ -187,6 +187,11 @@ void MpiMcmcApplication::allocateSSEMem()
         talloc = new aligned_m128[howManyWeAlloc];
         sysObs = new(talloc) double[howManyWeNeed];
 
+        talloc = new aligned_m128[howManyWeAlloc];
+        sysFluxLo = new(talloc) double[howManyWeNeed];
+
+        talloc = new aligned_m128[howManyWeAlloc];
+        sysFluxHi = new(talloc) double[howManyWeNeed];
     }
 
     int i = 0;
@@ -197,20 +202,27 @@ void MpiMcmcApplication::allocateSSEMem()
         {
             if ((k < s.variance.size()) && (s.variance.at(k) > EPS))
             {
-                sysVars[i] = s.variance.at(k) * clust.clust[0].varScale;
-                sysVar2[i] = __builtin_log (TWO_M_PI * sysVars[i]);
+                double var = s.variance.at(k) * clust.clust[0].varScale;
+                sysVars[i] = var;
+                sysVar2[i] = __builtin_log (TWO_M_PI * var);
 
-                // Removes a division from the noBinaries loop which turns a 14 cycle loop into a 3.8 cycle loop
-                sysVars[i] = 1 / sysVars[i];
+                sysObs[i] = s.obsPhot.at(k);
 
-                sysObs [i] = s.obsPhot.at(k);
+                // Pre-compute flux bounds for binary SIMD (3 sigma range)
+                double nSDTerm = 3.0 * std::sqrt(var);
+                sysFluxLo[i] = exp10((sysObs[i] - nSDTerm) / -2.5);
+                sysFluxHi[i] = exp10((sysObs[i] + nSDTerm) / -2.5);
+
+                // Invert variance for likelihood computation
+                sysVars[i] = 1.0 / var;
             }
             else
             {
                 sysVars[i] = 0.0;
                 sysVar2[i] = 0.0;
-
-                sysObs [i] = 0.0;
+                sysObs[i] = 0.0;
+                sysFluxLo[i] = 0.0;
+                sysFluxHi[i] = 0.0;
             }
         }
     }
@@ -631,16 +643,18 @@ tuple<double, vector<double>> MpiMcmcApplication::logPostStep(DualPopCluster &pr
     {
         if (settings.noBinaries)
         {
-#ifndef IS_ARM
-	  post[i] = margEvolveNoBinaries (propClust.clust[i], evoModels, *isochrone.at(i), pool, sysVars, sysVar2, sysObs, sSize, howManyFiltsAligned, howManyFilts, settings.global.modIsParallax, settings.eepInterpolationPower);
-
-#else
-	  post[i] = margEvolveNoBinaries (propClust.clust[i], evoModels, *isochrone.at(i), pool, systems, settings.global.modIsParallax, settings.eepInterpolationPower);
-#endif
+            post[i] = margEvolveNoBinaries(propClust.clust[i], evoModels, *isochrone.at(i), pool,
+                                           sysVars, sysVar2, sysObs,
+                                           sSize, howManyFiltsAligned, howManyFilts,
+                                           settings.global.modIsParallax, settings.eepInterpolationPower);
         }
         else
         {
-            post[i] = margEvolveWithBinary (propClust.clust[i], systems, evoModels, *isochrone.at(i), pool, settings.global.modIsParallax, settings.eepInterpolationPower);
+            post[i] = margEvolveWithBinary(propClust.clust[i], evoModels, *isochrone.at(i), pool,
+                                           systems,
+                                           sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi,
+                                           howManyFiltsAligned, howManyFilts,
+                                           settings.global.modIsParallax, settings.eepInterpolationPower);
         }
     });
 

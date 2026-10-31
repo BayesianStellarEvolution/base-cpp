@@ -66,6 +66,8 @@ class MpiMcmcApplication
     double* sysVars = nullptr;
     double* sysVar2 = nullptr;
     double* sysObs  = nullptr;
+    double* sysFluxLo = nullptr;  // Pre-computed exp10((obs - 3*sqrt(var)) / -2.5)
+    double* sysFluxHi = nullptr;  // Pre-computed exp10((obs + 3*sqrt(var)) / -2.5)
 
     size_t howManyFilts = 0;
     size_t howManyFiltsAligned = 0;
