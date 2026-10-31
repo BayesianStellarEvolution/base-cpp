@@ -32,3 +32,4 @@ contrib/BUILD/*
 
 !.keep
 .DS_Store
+CLAUDE.md
