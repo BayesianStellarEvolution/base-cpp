@@ -28,10 +28,7 @@ using base::utility::ThreadPool;
 
 #include <emmintrin.h> // SSE2 (_pd, _m128d)
 #include <pmmintrin.h> // SSE3 (hadd)
-
-extern "C" {
-#include <sleef/sleefsimd.h> // xexp
-}
+#include <sleef.h>
 
 #define ROUND_DOWN(x, s) ((x) & ~((s)-1))
 
@@ -75,7 +72,7 @@ inline static __m128d calcSingleFilterResult(const double* sVar1, const double* 
 
 inline static void addLogLikelihood(const __m128d likelihood, double* sPost)
 {
-    const __m128d posts = xexp(likelihood);
+    const __m128d posts = Sleef_expd2_u10sse2(likelihood);
 
     __m128d tPost = _mm_load_pd(sPost);
 
@@ -319,7 +316,7 @@ vector<double> margEvolveNoBinaries(const Cluster &clust, const Model &evoModels
                             likelihood = _mm_add_sd(likelihood, deltaMags);
                         }
 
-                        const __m128d posts = xexp(likelihood);
+                        const __m128d posts = Sleef_expd2_u10sse2(likelihood);
 
                         __m128d tPost = _mm_load_sd(sPost);
 

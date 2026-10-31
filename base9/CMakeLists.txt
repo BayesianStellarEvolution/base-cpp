@@ -1,18 +1,14 @@
-cmake_minimum_required(VERSION 2.8...3.26.0)
+cmake_minimum_required(VERSION 3.18...3.30)
 
-if ("${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "arm64" OR
-    "${CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "aarch64")
-  file(GLOB BASE9_FILES *.cpp *.hpp MsRgbModels/*.cpp MsRgbModels/*.hpp WdCoolingModels/*.cpp WdCoolingModels/*.hpp WdAtmosphereModels/*.cpp WdAtmosphereModels/*.hpp IO/*.cpp IO/*.hpp)
-else ()
-  file(GLOB BASE9_FILES *.cpp *.hpp MsRgbModels/*.cpp MsRgbModels/*.hpp WdCoolingModels/*.cpp WdCoolingModels/*.hpp WdAtmosphereModels/*.cpp WdAtmosphereModels/*.hpp IO/*.cpp IO/*.hpp sleef/*.c sleef/*.h)
-endif ()
+file(GLOB BASE9_FILES *.cpp *.hpp MsRgbModels/*.cpp MsRgbModels/*.hpp WdCoolingModels/*.cpp WdCoolingModels/*.hpp WdAtmosphereModels/*.cpp WdAtmosphereModels/*.hpp IO/*.cpp IO/*.hpp)
 
 include_directories( ${YAML_CPP_INCLUDE_DIRS} )
 
 add_library(base9 STATIC ${BASE9_FILES})
 
 set_target_properties(base9 PROPERTIES POSITION_INDEPENDENT_CODE true)
-target_link_libraries(base9 dl)
+target_link_libraries(base9 dl sleef)
+target_include_directories(base9 PRIVATE ${CMAKE_BINARY_DIR}/base9/sleef/include)
 
 install(TARGETS base9
         DESTINATION lib)

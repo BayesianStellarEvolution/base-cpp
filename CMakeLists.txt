@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.10...3.26.0)
+cmake_minimum_required(VERSION 3.18...3.30)
 
 project(Base9 CXX C)
 
@@ -127,6 +127,19 @@ option(YAML_CPP_BUILD_TESTS "Enable testing" OFF)
 option(YAML_CPP_BUILD_TOOLS "Enable parse tools" OFF)
 option(YAML_CPP_BUILD_CONTRIB "Enable contrib stuff in library" OFF)
 add_subdirectory(yaml-cpp)
+
+# SLEEF configuration - disable features we don't need
+set(SLEEF_BUILD_LIBM ON CACHE BOOL "" FORCE)
+set(SLEEF_BUILD_DFT OFF CACHE BOOL "" FORCE)
+set(SLEEF_BUILD_QUAD OFF CACHE BOOL "" FORCE)
+set(SLEEF_BUILD_GNUABI_LIBS OFF CACHE BOOL "" FORCE)
+set(SLEEF_BUILD_SCALAR_LIB OFF CACHE BOOL "" FORCE)
+set(SLEEF_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(SLEEF_BUILD_BENCH OFF CACHE BOOL "" FORCE)
+set(SLEEF_BUILD_INLINE_HEADERS OFF CACHE BOOL "" FORCE)
+set(SLEEF_SHOW_CONFIG OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+add_subdirectory(base9/sleef)
 
 add_subdirectory(base9)
 
