@@ -141,6 +141,28 @@ public:
     base::utility::ThreadPool pool{1};
 };
 
+BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveNoBinaries_Reference)(benchmark::State& state) {
+    if (!g_initialized) return;
+
+    for (auto _ : state) {
+        auto result = margEvolveNoBinaries_Reference(
+            g_clust, *g_evoModels, *g_isochrone,
+            systems, false, 0);
+        benchmark::DoNotOptimize(result);
+    }
+
+    state.SetItemsProcessed(state.iterations() * nSystems);
+    state.counters["stars"] = nSystems;
+    state.counters["filters"] = g_howManyFilts;
+}
+
+BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveNoBinaries_Reference)
+    ->Unit(benchmark::kMillisecond)
+    ->Arg(100)
+    ->Arg(500)
+    ->Arg(1000)
+    ->Arg(2000);
+
 BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveNoBinaries)(benchmark::State& state) {
     if (!g_initialized) return;
 
