@@ -70,6 +70,8 @@ class MpiMcmcApplication
     double* sysVars = nullptr;
     double* sysVar2 = nullptr;
     double* sysObs  = nullptr;
+    double* sysFluxLo = nullptr;  // Pre-computed exp10((obs - 3*sqrt(var)) / -2.5)
+    double* sysFluxHi = nullptr;  // Pre-computed exp10((obs + 3*sqrt(var)) / -2.5)
 
     double fsLike = 0;
 
