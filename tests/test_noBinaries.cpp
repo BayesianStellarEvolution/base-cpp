@@ -107,15 +107,20 @@ protected:
     void prepareAlignedArrays(const vector<StellarSystem>& systems,
                               vector<double>& sysVars,
                               vector<double>& sysVar2,
-                              vector<double>& sysObs) {
+                              vector<double>& sysObs,
+                              vector<double>& sysFluxLo,
+                              vector<double>& sysFluxHi) {
         size_t n = systems.size();
         size_t totalSize = n * howManyFiltsAligned;
 
         sysVars.resize(totalSize);
         sysVar2.resize(totalSize);
         sysObs.resize(totalSize);
+        sysFluxLo.resize(totalSize);
+        sysFluxHi.resize(totalSize);
 
         const double TWO_M_PI = 2 * M_PI;
+        const double nSD = 3.0;
         size_t idx = 0;
         for (const auto& sys : systems) {
             for (size_t k = 0; k < howManyFiltsAligned; ++k, ++idx) {
@@ -124,10 +129,15 @@ protected:
                     sysVars[idx] = 1.0 / var;
                     sysVar2[idx] = std::log(TWO_M_PI * var);
                     sysObs[idx] = sys.obsPhot[k];
+                    double nSDTerm = nSD * std::sqrt(var);
+                    sysFluxLo[idx] = std::pow(10.0, (sys.obsPhot[k] - nSDTerm) / -2.5);
+                    sysFluxHi[idx] = std::pow(10.0, (sys.obsPhot[k] + nSDTerm) / -2.5);
                 } else {
                     sysVars[idx] = 0.0;
                     sysVar2[idx] = 0.0;
                     sysObs[idx] = 0.0;
+                    sysFluxLo[idx] = 0.0;
+                    sysFluxHi[idx] = 0.0;
                 }
             }
         }
@@ -149,8 +159,8 @@ TEST_F(NoBinariesTest, ReturnsFiniteValues) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
     auto systems = createSystems(100);
-    vector<double> sysVars, sysVar2, sysObs;
-    prepareAlignedArrays(systems, sysVars, sysVar2, sysObs);
+    vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
+    prepareAlignedArrays(systems, sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi);
 
     auto results = margEvolveNoBinaries(
         clust, *evoModels, *isochrone, pool,
@@ -169,8 +179,8 @@ TEST_F(NoBinariesTest, DeterministicResults) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
     auto systems = createSystems(50, 123);
-    vector<double> sysVars, sysVar2, sysObs;
-    prepareAlignedArrays(systems, sysVars, sysVar2, sysObs);
+    vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
+    prepareAlignedArrays(systems, sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi);
 
     auto results1 = margEvolveNoBinaries(
         clust, *evoModels, *isochrone, pool,
@@ -215,8 +225,8 @@ TEST_F(NoBinariesTest, MatchesScalarReference) {
         systems, false, 0);
 
     // Compare SIMD (x86 SSE or ARM NEON) against scalar reference
-    vector<double> sysVars, sysVar2, sysObs;
-    prepareAlignedArrays(systems, sysVars, sysVar2, sysObs);
+    vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
+    prepareAlignedArrays(systems, sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi);
 
     auto optimizedResults = margEvolveNoBinaries(
         clust, *evoModels, *isochrone, pool,
@@ -244,6 +254,45 @@ TEST_F(NoBinariesTest, MatchesScalarReference) {
     }
 
     std::cerr << "Max relative error: " << maxRelError << "\n";
+}
+
+TEST_F(NoBinariesTest, BinarySIMDMatchesReference) {
+    ASSERT_TRUE(initialized) << "Models not initialized";
+
+    auto systems = createSystems(50, 999);
+
+    // Get reference results
+    auto refResults = margEvolveWithBinary(
+        clust, systems, *evoModels, *isochrone, pool,
+        false, 0);
+
+    // Prepare aligned arrays
+    vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
+    prepareAlignedArrays(systems, sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi);
+
+    // Get SIMD results
+    auto simdResults = margEvolveWithBinary(
+        clust, *evoModels, *isochrone, pool,
+        systems,
+        sysVars.data(), sysVar2.data(), sysObs.data(),
+        sysFluxLo.data(), sysFluxHi.data(),
+        howManyFiltsAligned, howManyFilts,
+        false, 0);
+
+    ASSERT_EQ(simdResults.size(), refResults.size());
+
+    double maxRelError = 0.0;
+    for (size_t i = 0; i < simdResults.size(); ++i) {
+        if (refResults[i] != 0.0) {
+            double relError = std::abs((simdResults[i] - refResults[i]) / refResults[i]);
+            maxRelError = std::max(maxRelError, relError);
+            EXPECT_LT(relError, 1e-10)
+                << "Result[" << i << "]: simd=" << simdResults[i]
+                << " reference=" << refResults[i]
+                << " relError=" << relError;
+        }
+    }
+    std::cerr << "Binary SIMD max relative error: " << maxRelError << "\n";
 }
 
 int main(int argc, char** argv) {

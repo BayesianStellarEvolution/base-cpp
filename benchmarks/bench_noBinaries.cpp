@@ -109,8 +109,11 @@ public:
         sysVars.resize(totalSize);
         sysVar2.resize(totalSize);
         sysObs.resize(totalSize);
+        sysFluxLo.resize(totalSize);
+        sysFluxHi.resize(totalSize);
 
         const double TWO_M_PI = 2 * M_PI;
+        const double nSD = 3.0;
         size_t idx = 0;
         for (const auto& sys : systems) {
             for (size_t k = 0; k < g_howManyFiltsAligned; ++k, ++idx) {
@@ -119,10 +122,15 @@ public:
                     sysVars[idx] = 1.0 / var;
                     sysVar2[idx] = std::log(TWO_M_PI * var);
                     sysObs[idx] = sys.obsPhot[k];
+                    double nSDTerm = nSD * sqrt(var);
+                    sysFluxLo[idx] = exp10((sys.obsPhot[k] - nSDTerm) / -2.5);
+                    sysFluxHi[idx] = exp10((sys.obsPhot[k] + nSDTerm) / -2.5);
                 } else {
                     sysVars[idx] = 0.0;
                     sysVar2[idx] = 0.0;
                     sysObs[idx] = 0.0;
+                    sysFluxLo[idx] = 0.0;
+                    sysFluxHi[idx] = 0.0;
                 }
             }
         }
@@ -133,10 +141,12 @@ public:
         sysVars.clear();
         sysVar2.clear();
         sysObs.clear();
+        sysFluxLo.clear();
+        sysFluxHi.clear();
     }
 
     vector<StellarSystem> systems;
-    vector<double> sysVars, sysVar2, sysObs;
+    vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
     size_t nSystems = 0;
     base::utility::ThreadPool pool{1};
 };
@@ -181,6 +191,56 @@ BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveNoBinaries)(benchmark::State& st
 }
 
 BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveNoBinaries)
+    ->Unit(benchmark::kMillisecond)
+    ->Arg(100)
+    ->Arg(500)
+    ->Arg(1000)
+    ->Arg(2000);
+
+// Binary benchmark - uses the same fixture but calls margEvolveWithBinary
+BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveWithBinary)(benchmark::State& state) {
+    if (!g_initialized) return;
+
+    for (auto _ : state) {
+        auto result = margEvolveWithBinary(
+            g_clust, systems, *g_evoModels, *g_isochrone, pool,
+            false, 0);
+        benchmark::DoNotOptimize(result);
+    }
+
+    state.SetItemsProcessed(state.iterations() * nSystems);
+    state.counters["stars"] = nSystems;
+    state.counters["filters"] = g_howManyFilts;
+}
+
+BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveWithBinary)
+    ->Unit(benchmark::kMillisecond)
+    ->Arg(100)
+    ->Arg(500)
+    ->Arg(1000)
+    ->Arg(2000);
+
+// SIMD-optimized binary benchmark
+BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveWithBinary_SIMD)(benchmark::State& state) {
+    if (!g_initialized) return;
+
+    for (auto _ : state) {
+        auto result = margEvolveWithBinary(
+            g_clust, *g_evoModels, *g_isochrone, pool,
+            systems,
+            sysVars.data(), sysVar2.data(), sysObs.data(),
+            sysFluxLo.data(), sysFluxHi.data(),
+            g_howManyFiltsAligned, g_howManyFilts,
+            false, 0);
+        benchmark::DoNotOptimize(result);
+    }
+
+    state.SetItemsProcessed(state.iterations() * nSystems);
+    state.counters["stars"] = nSystems;
+    state.counters["filters"] = g_howManyFilts;
+}
+
+BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveWithBinary_SIMD)
     ->Unit(benchmark::kMillisecond)
     ->Arg(100)
     ->Arg(500)
