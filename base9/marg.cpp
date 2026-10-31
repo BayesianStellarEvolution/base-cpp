@@ -313,6 +313,9 @@ static void calcPost_simd(
     const vector<vector<double>> &secondaryMags,
     const vector<vector<double>> &secondaryFluxes,  // Pre-computed exp10(secondaryMags[i][f] / -2.5)
     const double* const distCorrection,              // Pre-computed distance + (absCoeffs[f] - 1) * abs
+    const double* const distCorrFactor,              // Pre-computed exp10(-distCorrection / 2.5)
+    double* const aligned_mags,                      // Pre-allocated aligned buffer for combined mags
+    double* const expTerms,                          // Pre-allocated buffer for expTerms
     const double* const systemVars,
     const double* const systemVar2,
     const double* const systemObs,
@@ -354,25 +357,18 @@ static void calcPost_simd(
     for (size_t f = 0; f < obsUnaligned; ++f)
         primaryFluxes[f] = exp10(primaryMags[f] / -2.5);
 
-    const double nSD = 3.0;
     vector<starDiff> diffs;
-
-    // Aligned buffer for combined magnitudes
-    double* aligned_mags = reinterpret_cast<double*>(aligned_alloc(16, obsSize * sizeof(double)));
 
     // q=0 case: combined mags = primary mags + distance correction (no secondary contribution)
     {
-        // Compute combined mags for q=0 (secondary flux = 0, use secondaryFluxes.back() which is for mass=0)
+        // Compute combined mags and expTerms for q=0
+        // expTerms[f] = exp10(aligned_mags[f] / -2.5) = flux * distCorrFactor[f]
         for (size_t f = 0; f < obsUnaligned; ++f)
         {
             double flux = primaryFluxes[f] + secondaryFluxes.back()[f];
             aligned_mags[f] = -2.5 * __builtin_log10(flux) + distCorrection[f];
+            expTerms[f] = flux * distCorrFactor[f];
         }
-
-        // Compute expTerms for filtering
-        vector<double> expTerms(obsUnaligned);
-        for (size_t f = 0; f < obsUnaligned; ++f)
-            expTerms[f] = exp10(aligned_mags[f] / -2.5);
 
         vector<diffStruct> singleDiffs;
         singleDiffs.reserve(obsUnaligned);
@@ -473,8 +469,6 @@ static void calcPost_simd(
             }
         }
     }
-
-    free(aligned_mags);
 }
 
 // SIMD-optimized margEvolveWithBinary
@@ -533,8 +527,16 @@ vector<double> margEvolveWithBinary(
     }
 
     double* distCorrection = reinterpret_cast<double*>(aligned_alloc(16, obsSize * sizeof(double)));
+    double* distCorrFactor = reinterpret_cast<double*>(aligned_alloc(16, obsSize * sizeof(double)));
     for (size_t f = 0; f < obsUnaligned; ++f)
+    {
         distCorrection[f] = distance + (evoModels.absCoeffs[f] - 1.0) * clust.abs;
+        distCorrFactor[f] = exp10(-distCorrection[f] / 2.5);
+    }
+
+    // Pre-allocate aligned buffers (reused across calls)
+    double* aligned_mags = reinterpret_cast<double*>(aligned_alloc(16, obsSize * sizeof(double)));
+    double* expTerms = reinterpret_cast<double*>(aligned_alloc(16, obsSize * sizeof(double)));
 
     const int isoIncrem = GlobalSettings::calcEepSteps(eepInterpolationPower);
 
@@ -556,13 +558,16 @@ vector<double> margEvolveWithBinary(
                 systems.front().primary.mass = isochrone.eeps[m].mass + (k * dMass);
 
                 calcPost_simd(dMass, clust, systems, evoModels, isochrone, post, secondaryMags,
-                             secondaryFluxes, distCorrection,
+                             secondaryFluxes, distCorrection, distCorrFactor, aligned_mags, expTerms,
                              systemVars, systemVar2, systemObs, systemFluxLo, systemFluxHi,
                              obsSize, obsUnaligned);
             }
         }
     }
 
+    free(expTerms);
+    free(aligned_mags);
+    free(distCorrFactor);
     free(distCorrection);
     return post;
 }
@@ -624,6 +629,9 @@ static void calcPost_simd(
     const vector<vector<double>> &secondaryMags,
     const vector<vector<double>> &secondaryFluxes,
     const double* const distCorrection,
+    const double* const distCorrFactor,
+    double* const aligned_mags,
+    double* const expTerms,
     const double* const systemVars,
     const double* const systemVar2,
     const double* const systemObs,
@@ -665,22 +673,18 @@ static void calcPost_simd(
     for (size_t f = 0; f < obsUnaligned; ++f)
         primaryFluxes[f] = exp10(primaryMags[f] / -2.5);
 
-    const double nSD = 3.0;
     vector<starDiff> diffs;
-
-    double* aligned_mags = reinterpret_cast<double*>(_mm_malloc(obsSize * sizeof(double), 16));
 
     // q=0 case
     {
+        // Compute combined mags and expTerms
+        // expTerms[f] = exp10(aligned_mags[f] / -2.5) = flux * distCorrFactor[f]
         for (size_t f = 0; f < obsUnaligned; ++f)
         {
             double flux = primaryFluxes[f] + secondaryFluxes.back()[f];
             aligned_mags[f] = -2.5 * __builtin_log10(flux) + distCorrection[f];
+            expTerms[f] = flux * distCorrFactor[f];
         }
-
-        vector<double> expTerms(obsUnaligned);
-        for (size_t f = 0; f < obsUnaligned; ++f)
-            expTerms[f] = exp10(aligned_mags[f] / -2.5);
 
         vector<diffStruct> singleDiffs;
         singleDiffs.reserve(obsUnaligned);
@@ -779,8 +783,6 @@ static void calcPost_simd(
             }
         }
     }
-
-    _mm_free(aligned_mags);
 }
 
 vector<double> margEvolveWithBinary(
@@ -838,8 +840,16 @@ vector<double> margEvolveWithBinary(
     }
 
     double* distCorrection = reinterpret_cast<double*>(_mm_malloc(obsSize * sizeof(double), 16));
+    double* distCorrFactor = reinterpret_cast<double*>(_mm_malloc(obsSize * sizeof(double), 16));
     for (size_t f = 0; f < obsUnaligned; ++f)
+    {
         distCorrection[f] = distance + (evoModels.absCoeffs[f] - 1.0) * clust.abs;
+        distCorrFactor[f] = exp10(-distCorrection[f] / 2.5);
+    }
+
+    // Pre-allocate aligned buffers (reused across calls)
+    double* aligned_mags = reinterpret_cast<double*>(_mm_malloc(obsSize * sizeof(double), 16));
+    double* expTerms = reinterpret_cast<double*>(_mm_malloc(obsSize * sizeof(double), 16));
 
     const int isoIncrem = GlobalSettings::calcEepSteps(eepInterpolationPower);
 
@@ -861,13 +871,16 @@ vector<double> margEvolveWithBinary(
                 systems.front().primary.mass = isochrone.eeps[m].mass + (k * dMass);
 
                 calcPost_simd(dMass, clust, systems, evoModels, isochrone, post, secondaryMags,
-                             secondaryFluxes, distCorrection,
+                             secondaryFluxes, distCorrection, distCorrFactor, aligned_mags, expTerms,
                              systemVars, systemVar2, systemObs, systemFluxLo, systemFluxHi,
                              obsSize, obsUnaligned);
             }
         }
     }
 
+    _mm_free(expTerms);
+    _mm_free(aligned_mags);
+    _mm_free(distCorrFactor);
     _mm_free(distCorrection);
     return post;
 }
