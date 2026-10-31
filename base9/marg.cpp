@@ -316,6 +316,7 @@ static void calcPost_simd(
     const double* const distCorrFactor,              // Pre-computed exp10(-distCorrection / 2.5)
     double* const aligned_mags,                      // Pre-allocated aligned buffer for combined mags
     double* const expTerms,                          // Pre-allocated buffer for expTerms
+    double* const primaryFluxes,                     // Pre-allocated buffer for primary fluxes
     const double* const systemVars,
     const double* const systemVar2,
     const double* const systemObs,
@@ -352,8 +353,7 @@ static void calcPost_simd(
     pStar.mass = primaryMass;
     const auto primaryMags = pStar.msRgbEvol(isochrone);
 
-    // Pre-compute primary fluxes
-    vector<double> primaryFluxes(obsUnaligned);
+    // Compute primary fluxes into pre-allocated buffer
     for (size_t f = 0; f < obsUnaligned; ++f)
         primaryFluxes[f] = exp10(primaryMags[f] / -2.5);
 
@@ -537,6 +537,7 @@ vector<double> margEvolveWithBinary(
     // Pre-allocate aligned buffers (reused across calls)
     double* aligned_mags = reinterpret_cast<double*>(aligned_alloc(16, obsSize * sizeof(double)));
     double* expTerms = reinterpret_cast<double*>(aligned_alloc(16, obsSize * sizeof(double)));
+    double* primaryFluxes = reinterpret_cast<double*>(aligned_alloc(16, obsSize * sizeof(double)));
 
     const int isoIncrem = GlobalSettings::calcEepSteps(eepInterpolationPower);
 
@@ -558,13 +559,14 @@ vector<double> margEvolveWithBinary(
                 systems.front().primary.mass = isochrone.eeps[m].mass + (k * dMass);
 
                 calcPost_simd(dMass, clust, systems, evoModels, isochrone, post, secondaryMags,
-                             secondaryFluxes, distCorrection, distCorrFactor, aligned_mags, expTerms,
+                             secondaryFluxes, distCorrection, distCorrFactor, aligned_mags, expTerms, primaryFluxes,
                              systemVars, systemVar2, systemObs, systemFluxLo, systemFluxHi,
                              obsSize, obsUnaligned);
             }
         }
     }
 
+    free(primaryFluxes);
     free(expTerms);
     free(aligned_mags);
     free(distCorrFactor);
@@ -632,6 +634,7 @@ static void calcPost_simd(
     const double* const distCorrFactor,
     double* const aligned_mags,
     double* const expTerms,
+    double* const primaryFluxes,
     const double* const systemVars,
     const double* const systemVar2,
     const double* const systemObs,
@@ -668,8 +671,7 @@ static void calcPost_simd(
     pStar.mass = primaryMass;
     const auto primaryMags = pStar.msRgbEvol(isochrone);
 
-    // Pre-compute primary fluxes
-    vector<double> primaryFluxes(obsUnaligned);
+    // Compute primary fluxes into pre-allocated buffer
     for (size_t f = 0; f < obsUnaligned; ++f)
         primaryFluxes[f] = exp10(primaryMags[f] / -2.5);
 
@@ -850,6 +852,7 @@ vector<double> margEvolveWithBinary(
     // Pre-allocate aligned buffers (reused across calls)
     double* aligned_mags = reinterpret_cast<double*>(_mm_malloc(obsSize * sizeof(double), 16));
     double* expTerms = reinterpret_cast<double*>(_mm_malloc(obsSize * sizeof(double), 16));
+    double* primaryFluxes = reinterpret_cast<double*>(_mm_malloc(obsSize * sizeof(double), 16));
 
     const int isoIncrem = GlobalSettings::calcEepSteps(eepInterpolationPower);
 
@@ -871,13 +874,14 @@ vector<double> margEvolveWithBinary(
                 systems.front().primary.mass = isochrone.eeps[m].mass + (k * dMass);
 
                 calcPost_simd(dMass, clust, systems, evoModels, isochrone, post, secondaryMags,
-                             secondaryFluxes, distCorrection, distCorrFactor, aligned_mags, expTerms,
+                             secondaryFluxes, distCorrection, distCorrFactor, aligned_mags, expTerms, primaryFluxes,
                              systemVars, systemVar2, systemObs, systemFluxLo, systemFluxHi,
                              obsSize, obsUnaligned);
             }
         }
     }
 
+    _mm_free(primaryFluxes);
     _mm_free(expTerms);
     _mm_free(aligned_mags);
     _mm_free(distCorrFactor);
