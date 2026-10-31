@@ -11,6 +11,7 @@
 #include "Star.hpp"
 
 #include "densities.hpp"
+#include "GlobalSettings.hpp"
 #include "Matrix.hpp"
 #include "Model.hpp"
 #include "Utility.hpp"
@@ -226,10 +227,7 @@ vector<double> margEvolveWithBinary (const Cluster &clust, vector<StellarSystem>
         secondaryMags.push_back(s.getMags(clust, evoModels, isochrone));
     }
 
-    const int isoIncrem =
-        eepInterpolationPower == 0 ? 80 // Old default
-                                   : eepInterpolationPower > 0 ? 32 << eepInterpolationPower // 2^(5 + eepInterpolationPower)
-                                                               : 32 >> -eepInterpolationPower;
+    const int isoIncrem = GlobalSettings::calcEepSteps(eepInterpolationPower);
 
     vector<double> post(systems.size(), 0.0);
 
