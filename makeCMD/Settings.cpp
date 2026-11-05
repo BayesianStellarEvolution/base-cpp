@@ -94,6 +94,7 @@ void Settings::fromCLI(int argc, char **argv)
     static struct option long_options[] = {
         {"noWDs", no_argument, 0, 0xAC},
         {"onlyWDs", no_argument, 0, 0x9F},
+        {"interpolateCMD", no_argument, 0, 0x98},
         {"eepInterpolationPower", required_argument, 0, 0xBC},
         {"wdInterpolationPower", required_argument, 0, 0xBB},
         {"help", no_argument, 0, 0xDB},
@@ -114,6 +115,10 @@ void Settings::fromCLI(int argc, char **argv)
 
             case 0x9F:
                 onlyWDs = true;
+                break;
+
+            case 0x98:
+                interpolateCMD = true;
                 break;
 
             case 0xBC:
@@ -168,6 +173,7 @@ void Settings::printUsage()
     cerr << "Application-Specific Options:\n";
     cerr << "  --noWDs                   Do not include white dwarfs in CMD\n";
     cerr << "  --onlyWDs                 Integrate only above AGB tip (WD-only runs)\n";
+    cerr << "  --interpolateCMD          Enable CMD mass grid interpolation\n";
     cerr << "  --eepInterpolationPower <int>  EEP interpolation resolution\n";
     cerr << "  --wdInterpolationPower <int>   WD mass grid resolution\n";
     cerr << "\n";

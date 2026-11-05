@@ -207,16 +207,11 @@ void GlobalSettings::fromCLI (int argc, char **argv)
         // Flags
         {"verbose", no_argument, 0, 0xAF},
         {"veryVerbose", no_argument, 0, 0xB9},
-        {"overrideBounds", no_argument, 0, 0xAD},
         {"allowInvalidModels", no_argument, 0, 0x9E},
-        {"exitAfterLoad", no_argument, 0, 0xAB},
         {"details", no_argument, 0, 0xAA},
         {"ignoreLowSigma", no_argument, 0, 0x9C},
         {"allowNegativeSigma", no_argument, 0, 0x9B},
         {"includeBurnin", no_argument, 0, 0xBA},
-        {"stopAfterBurnin", no_argument, 0, 0xB8},
-        {"startWithBurnin", required_argument, 0, 0xB7},
-        {"interpolateCMD", no_argument, 0, 0x98},
 
         // Filter options
         {"include", required_argument, 0, 0x9A},
@@ -393,14 +388,6 @@ void GlobalSettings::fromCLI (int argc, char **argv)
                 // --noBinaries is now app-specific
                 break;
 
-            case 0xAD:
-                overrideBounds = true;
-                break;
-
-            case 0xAB:
-                exitAfterLoad = true;
-                break;
-
             case 0xAA:
                 details = true;
                 break;
@@ -419,10 +406,6 @@ void GlobalSettings::fromCLI (int argc, char **argv)
 
             case 0x9B:
                 allowNegativeSigma = true;
-                break;
-
-            case 0x98:
-                interpolateCMD = true;
                 break;
 
             // distMod and parallax have to be handled with special care.
@@ -466,14 +449,6 @@ void GlobalSettings::fromCLI (int argc, char **argv)
 
             case 0xBA:
                 includeBurnin = true;
-                break;
-
-            case 0xB8:
-                stopAfterBurnin = true;
-                break;
-
-            case 0xB7:
-                istringstream (string (optarg)) >> startWithBurnin;
                 break;
 
             case 0x9A:
@@ -616,7 +591,7 @@ void GlobalSettings::printUsage ()
     cerr << "  --config <file>           YAML configuration file (default: base9.yaml)\n";
     cerr << "  --seed <int>              Random number generator seed\n";
     cerr << "  --verbose                 Enable verbose output\n";
-    cerr << "  --veryVerbose             Enable very verbose output (includes --verbose)\n";
+    cerr << "  --veryVerbose             Enable very verbose output\n";
     cerr << "\n";
 
     cerr << "File Options:\n";
@@ -692,16 +667,11 @@ void GlobalSettings::printUsage ()
     cerr << "\n";
 
     cerr << "Behavior Flags:\n";
-    cerr << "  --overrideBounds          Skip model boundary validation\n";
     cerr << "  --allowInvalidModels      Allow models with missing filters\n";
-    cerr << "  --interpolateCMD          Enable CMD mass grid interpolation\n";
     cerr << "  --includeBurnin           Include burn-in samples in output\n";
-    cerr << "  --stopAfterBurnin         Stop after Stage 2 burn-in completes\n";
-    cerr << "  --startWithBurnin <file>  Resume from saved burn-in state\n";
     cerr << "\n";
 
     cerr << "Debugging:\n";
-    cerr << "  --exitAfterLoad           Exit after loading models (for testing)\n";
     cerr << "  --details                 Show additional run details\n";
     cerr << "  --ignoreLowSigma          Suppress warnings for sigma < 0.01\n";
     cerr << "  --allowNegativeSigma      Allow negative sigmas (disables filter)\n";
@@ -801,21 +771,6 @@ void GlobalSettings::printVerboseUsage ()
     cerr << "  --includeBurnin\n";
     cerr << "      Returns the pre-9.6 behavior to sampleMass and sampleWDMass where all lines\n";
     cerr << "      from the result file are considered (rather than just stage 3, post-burnin).\n\n";
-
-    cerr << "  --stopAfterBurnin\n";
-    cerr << "      Stops the run after the Stage 2 burnin for use with --startWithBurnin.\n\n";
-
-    cerr << "  --startWithBurnin <filename>\n";
-    cerr << "      Starts the run with the Stage 2 burnin output from a standard run of BASE-9\n";
-    cerr << "      or a run using the --stopAfterBurnin flag.\n\n";
-
-    cerr << "  --interpolateCMD\n";
-    cerr << "      Enables interpolation over the mass grid in makeCMDs, similar to the\n";
-    cerr << "      integration behavior in singlePopMcmc.\n\n";
-
-    cerr << "Debugging:\n";
-    cerr << "  --exitAfterLoad\n";
-    cerr << "      Dev flag for model and photometry debugging\n\n";
 
     cerr << "  --ignoreLowSigma\n";
     cerr << "      Turn off warning about sigmas in photometry less than 0.01\n\n";

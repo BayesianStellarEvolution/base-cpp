@@ -123,6 +123,7 @@ void Settings::fromCLI(int argc, char **argv)
         {"thin", required_argument, 0, 0xEA},
         {"bigStepBurnin", no_argument, 0, 0xCF},
         {"noBinaries", no_argument, 0, 0xAE},
+        {"overrideBounds", no_argument, 0, 0xAD},
         {"eepInterpolationPower", required_argument, 0, 0xBC},
         {"wdInterpolationPower", required_argument, 0, 0xBB},
         {"threads", required_argument, 0, 0xCE},
@@ -156,6 +157,10 @@ void Settings::fromCLI(int argc, char **argv)
 
             case 0xAE:
                 noBinaries = true;
+                break;
+
+            case 0xAD:
+                overrideBounds = true;
                 break;
 
             case 0xBC:
@@ -221,6 +226,7 @@ void Settings::printUsage()
     cerr << "  --thin <int>              Thinning factor for output\n";
     cerr << "  --bigStepBurnin           Use large steps during burn-in\n";
     cerr << "  --noBinaries              Disable binary star integration\n";
+    cerr << "  --overrideBounds          Skip model boundary validation\n";
     cerr << "  --eepInterpolationPower <int>  EEP interpolation resolution\n";
     cerr << "  --wdInterpolationPower <int>   WD mass grid resolution\n";
     cerr << "  --threads <int>           Number of threads to use\n";

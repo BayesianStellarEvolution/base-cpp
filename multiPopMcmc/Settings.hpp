@@ -19,6 +19,7 @@ class Settings
 
     // App-specific flags
     bool noBinaries = false;
+    bool overrideBounds = false;
     int eepInterpolationPower = 0;
     int wdInterpolationPower = 0;
     unsigned int threads = std::numeric_limits<int>::max();

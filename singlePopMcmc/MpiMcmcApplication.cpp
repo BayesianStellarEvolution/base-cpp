@@ -310,7 +310,7 @@ void MpiMcmcApplication::verifyModelBounds()
     if (   settings.global.cluster.starting.logAge < evoModels.mainSequenceEvol->getMinAge()
         || settings.global.cluster.starting.logAge > evoModels.mainSequenceEvol->getMaxAge())
     {
-        if (! settings.global.overrideBounds)
+        if (! settings.overrideBounds)
         {
             cerr << std::setprecision(3) << std::fixed
                  << "\n***Error: Starting value \"logAge\" (" << settings.global.cluster.starting.logAge
@@ -618,7 +618,7 @@ int MpiMcmcApplication::run()
     fieldStarLikelihood->save({fsLike});
 
     // For testing, exit after model and photometry are loaded
-    if (settings.global.exitAfterLoad) { exit(0); }
+    if (settings.exitAfterLoad) { exit(0); }
 
     // Burnin
     allocateSSEMem();
@@ -627,17 +627,17 @@ int MpiMcmcApplication::run()
     std::function<double(Cluster&)> logPostFunc = std::bind(&MpiMcmcApplication::logPostStep, this, _1);
     std::function<void(const Cluster&)> checkPriors = std::bind(&ensurePriors, std::cref(settings), _1);
 
-    if (settings.global.startWithBurnin.empty())
+    if (settings.startWithBurnin.empty())
     {
         stage1Burnin(chain, checkPriors, logPostFunc);
         stage2Burnin(chain, checkPriors, logPostFunc);
     }
     else
     {
-        loadPreviousBurnin(settings.global.startWithBurnin, chain);
+        loadPreviousBurnin(settings.startWithBurnin, chain);
     }
 
-    if (!settings.global.stopAfterBurnin)
+    if (!settings.stopAfterBurnin)
     {
         // Main run
         // Overwrite the burnin photometry set with the full photometry set

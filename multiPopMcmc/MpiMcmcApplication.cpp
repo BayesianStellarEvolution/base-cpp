@@ -250,7 +250,7 @@ int MpiMcmcApplication::run()
     if (   settings.global.cluster.starting.logAge < evoModels.mainSequenceEvol->getMinAge()
         || settings.global.cluster.starting.logAge > evoModels.mainSequenceEvol->getMaxAge())
     {
-        if (! settings.global.overrideBounds)
+        if (! settings.overrideBounds)
         {
             cerr << std::setprecision(3) << std::fixed
                  << "\n***Error: Starting value \"logAge\" (" << settings.global.cluster.starting.logAge

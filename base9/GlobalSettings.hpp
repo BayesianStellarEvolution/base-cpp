@@ -20,11 +20,6 @@ class GlobalSettings
 
     bool modIsParallax = false;
     bool allowInvalidModels = false;
-    bool overrideBounds = false;
-
-    bool interpolateCMD = false;
-
-    bool exitAfterLoad = false; // Dev exit to support testing
 
     bool details = false;
     bool verbose = false;
@@ -34,9 +29,6 @@ class GlobalSettings
 
     bool ignoreLowSigma = false;     // Disables low sigma warning
     bool allowNegativeSigma = false; // Enables disabling individual photometric observations in the photometry file
-
-    bool stopAfterBurnin = false;
-    std::string startWithBurnin = "";
 
     std::vector<std::string> include;
     std::vector<std::string> exclude;

@@ -111,6 +111,10 @@ void Settings::fromCLI(int argc, char **argv)
         {"bigStepBurnin", no_argument, 0, 0xCF},
         {"noBinaries", no_argument, 0, 0xAE},
         {"onlyWDs", no_argument, 0, 0x9F},
+        {"overrideBounds", no_argument, 0, 0xAD},
+        {"exitAfterLoad", no_argument, 0, 0xAB},
+        {"stopAfterBurnin", no_argument, 0, 0xB8},
+        {"startWithBurnin", required_argument, 0, 0xB7},
         {"eepInterpolationPower", required_argument, 0, 0xBC},
         {"wdInterpolationPower", required_argument, 0, 0xBB},
         {"threads", required_argument, 0, 0xCE},
@@ -148,6 +152,22 @@ void Settings::fromCLI(int argc, char **argv)
 
             case 0x9F:
                 onlyWDs = true;
+                break;
+
+            case 0xAD:
+                overrideBounds = true;
+                break;
+
+            case 0xAB:
+                exitAfterLoad = true;
+                break;
+
+            case 0xB8:
+                stopAfterBurnin = true;
+                break;
+
+            case 0xB7:
+                startWithBurnin = optarg;
                 break;
 
             case 0xBC:
@@ -213,6 +233,10 @@ void Settings::printUsage()
     cerr << "  --bigStepBurnin           Use large steps during burn-in\n";
     cerr << "  --noBinaries              Disable binary star integration\n";
     cerr << "  --onlyWDs                 Integrate only above AGB tip (WD-only runs)\n";
+    cerr << "  --overrideBounds          Skip model boundary validation\n";
+    cerr << "  --exitAfterLoad           Exit after loading models (for testing)\n";
+    cerr << "  --stopAfterBurnin         Stop after Stage 2 burn-in completes\n";
+    cerr << "  --startWithBurnin <file>  Resume from saved burn-in state\n";
     cerr << "  --eepInterpolationPower <int>  EEP interpolation resolution\n";
     cerr << "  --wdInterpolationPower <int>   WD mass grid resolution\n";
     cerr << "  --threads <int>           Number of threads to use\n";

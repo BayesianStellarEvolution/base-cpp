@@ -20,6 +20,10 @@ class Settings
     // App-specific flags
     bool noBinaries = false;
     bool onlyWDs = false;
+    bool overrideBounds = false;
+    bool exitAfterLoad = false;
+    bool stopAfterBurnin = false;
+    std::string startWithBurnin = "";
     int eepInterpolationPower = 0;
     int wdInterpolationPower = 0;
     unsigned int threads = std::numeric_limits<int>::max();

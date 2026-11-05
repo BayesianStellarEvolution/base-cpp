@@ -373,7 +373,7 @@ Isochrone Application::interpolateIsochrone(const Cluster &clust, const Isochron
 {
     vector<EvolutionaryPoint> eeps;
 
-    if (settings.global.interpolateCMD)
+    if (settings.interpolateCMD)
     {
         const int isoIncrem =
             settings.eepInterpolationPower == 0 ? 80
@@ -433,7 +433,7 @@ vector<EvolutionaryPoint> Application::interpolateWDIsochrone(const Cluster &clu
 {
     vector<EvolutionaryPoint> eeps;
 
-    if (settings.global.interpolateCMD)
+    if (settings.interpolateCMD)
     {
         for (size_t j = 0; j < N_WD_MASS1; ++j)
         {

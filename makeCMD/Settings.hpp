@@ -17,6 +17,7 @@ class Settings
 
     // App-specific flags
     bool onlyWDs = false;
+    bool interpolateCMD = false;
     int eepInterpolationPower = 0;
     int wdInterpolationPower = 0;
 
