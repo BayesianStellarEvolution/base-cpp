@@ -2,7 +2,7 @@
 #include <iostream>
 #include <random>
 #include <string>
-#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Model.hpp"
@@ -17,93 +17,39 @@ using std::fixed;
 using std::setprecision;
 using std::setw;
 using std::string;
-using std::unordered_map;
 using std::vector;
 
-double getExposureTime(Settings &s, string f)
+double getExposureTime(const Settings &s, const string &f)
 {
-    try
-    {
-        return s.scatterCluster.exposures[f];
-    }
-    catch (std::out_of_range &e)
-    {
-        cerr << "No exposure field for filter \"" << f << "\" in configuration file" << endl;
-        return 0.0;
-    }
+    auto it = s.scatterCluster.exposures.find(f);
+    if (it != s.scatterCluster.exposures.end())
+        return it->second;
+
+    if (s.global.verbose)
+        cerr << "No exposure time for filter \"" << f << "\" in scatter config" << endl;
+
+    return 0.0;
 }
 
-static unordered_map<string, std::pair<double, double>> s2nCoeffs_uncrowded = {
-    {"U",       {9.33989,  0.3375778}},
-    {"B",       {10.0478,  0.3462758}},
-    {"V",       {10.48098, 0.3682010}},
-    {"R",       {10.71151, 0.3837847}},
-    {"I",       {10.61035, 0.3930941}},
-    {"J",       {9.282385, 0.3862580}},
-    {"H",       {9.197463, 0.3970419}},
-    {"K",       {9.024068, 0.3985604}},
-    {"UVf275w", {7.804164, 0.2833815}},
-    {"UVf336w", {7.779995, 0.2705339}},
-    {"UVf438w", {7.958377, 0.2727768}},
-    {"F606W",   {8.271906, 0.2647206}},
-    {"F814W",   {8.272662, 0.2634004}},
-
-    // Gaia filter coefficients provided by Marina Kounkel
-    {"G",       {-6.2043903, 0.33251351}},
-    {"G_BP",    {-5.5271903, 0.24522901}},
-    {"G_RP",    {-6.0969793, 0.30982647}}
-
-    // {9.024068, 0.3985604},      // IRAC Blue
-    // {9.024068, 0.3985604},      // IRAC Red
-    // {9.024068, 0.3985604},      // Band 1
-    // {9.024068, 0.3985604},      // Band 2
-    // {9.024068, 0.3985604},      // Band 3
-    // {9.024068, 0.3985604}       // Band 4
-};
-
-
-static unordered_map<string, std::pair<double, double>> s2nCoeffs_crowded = {
-    {"U",       {9.33989,  0.3375778}},
-    {"B",       {10.0478,  0.3462758}},
-    {"V",       {10.48098, 0.3682010}},
-    {"R",       {10.71151, 0.3837847}},
-    {"I",       {10.61035, 0.3930941}},
-    {"J",       {9.282385, 0.3862580}},
-    {"H",       {9.197463, 0.3970419}},
-    {"K",       {9.024068, 0.3985604}},
-    {"UVf275w", {6.7302, 0.2090}},
-    {"UVf336w", {6.9292, 0.2090}},
-    {"UVf438w", {7.2452, 0.2090}},
-    {"F606W",   {7.0797, 0.2090}},
-    {"F814W",   {7.0797, 0.2090}}
-
-    // {9.024068, 0.3985604},      // IRAC Blue
-    // {9.024068, 0.3985604},      // IRAC Red
-    // {9.024068, 0.3985604},      // Band 1
-    // {9.024068, 0.3985604},      // Band 2
-    // {9.024068, 0.3985604},      // Band 3
-    // {9.024068, 0.3985604}       // Band 4
-};
-
-
-// This is an approximation to the results one would obtain in one
-// hour with the KPNO 4m + Mosaic (UBVRI) or Flamingos (JHK) per band,
-// assuming dark time, seeing=1.1", airmass=1.2, and then scaling from
-// their by sqrt(exptime).  I further approximated the CCDTIME results
-// (run on the NOAO webste) with linear fits of mag vs. log(S/N).
-double signalToNoise (const Settings &settings, double mag, double exptime, string filter)
+// Computes S/N based on magnitude and exposure time using coefficients from config
+// logS2N = a - b * mag, then scale by sqrt(exptime)
+double signalToNoise(const Settings &settings, double mag, double exptime, const string &filter)
 {
-    auto s2nCoeffs = settings.scatterCluster.crowded ? s2nCoeffs_crowded : s2nCoeffs_uncrowded;
+    auto it = settings.scatterCluster.s2nCoeffs.find(filter);
+    if (it == settings.scatterCluster.s2nCoeffs.end())
+    {
+        cerr << "Warning: No S/N coefficients for filter \"" << filter << "\"" << endl;
+        return 0.0;
+    }
 
-    double logS2N = s2nCoeffs[filter].first - s2nCoeffs[filter].second * mag;
-    double s2n    = exp10 (logS2N);
-
-    s2n *= sqrt (exptime);
+    double logS2N = it->second.first - it->second.second * mag;
+    double s2n = exp10(logS2N);
+    s2n *= sqrt(exptime);
 
     return s2n;
 }
 
-bool meetsMagCutoff (const Settings &settings, const StellarSystem &s)
+bool meetsMagCutoff(const Settings &settings, const StellarSystem &s)
 {
     double mag;
 
@@ -129,7 +75,7 @@ bool meetsMagCutoff (const Settings &settings, const StellarSystem &s)
         return true;
 }
 
-bool meetsStageCutoff (const StellarSystem &s, const bool isFS)
+bool meetsStageCutoff(const StellarSystem &s, const bool isFS)
 {
     if (s.observedStatus == NSBH || s.observedStatus == DNE)
         return false;
@@ -140,16 +86,17 @@ bool meetsStageCutoff (const StellarSystem &s, const bool isFS)
 }
 
 
-int main (int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     Settings settings;
 
     vector<double> exposureTimes;
-
     vector<string> filters;
+    vector<string> outputFilters;  // Intersection of photometry and config filters
+    vector<size_t> filterIndices;  // Indices into original filter list
     vector<StellarSystem> systems;
 
-    settings.loadSettings (argc, argv);
+    settings.loadSettings(argc, argv);
 
     if (settings.global.seed == std::numeric_limits<uint32_t>::max())
     {
@@ -159,60 +106,97 @@ int main (int argc, char *argv[])
         cout << "Seed: " << settings.global.seed << endl;
     }
 
+    // Determine input photometry file
+    string inputFile;
+    if (!settings.global.files.phot.empty())
+    {
+        inputFile = settings.global.files.phot;
+    }
+    else
+    {
+        inputFile = settings.global.files.output + ".sim.out";
+    }
+
     {
         // Read photometry
         vector<double> filterPriorMin;
         vector<double> filterPriorMax;
 
-        // open files for reading (data) and writing
-        // rData implcitly relies on going out of scope to close the photometry file
-        // This is awful, but pretty (since this code is, at time of writing, in restricted, anonymous scope)
-        string filename = settings.global.files.output + ".sim.out";
-        std::ifstream photin(filename);
+        std::ifstream photin(inputFile);
 
         if (!photin)
         {
-            cerr << "***Error: Photometry file " << filename << " was not found.***" << endl;
+            cerr << "***Error: Photometry file " << inputFile << " was not found.***" << endl;
             cerr << "[Exiting...]" << endl;
-            exit (-1);
+            exit(-1);
         }
 
-        auto ret = base::utility::readPhotometry (photin, filterPriorMin, filterPriorMax, settings.global);
+        auto ret = base::utility::readPhotometry(photin, filterPriorMin, filterPriorMax, settings.global);
 
         filters = ret.first;
 
-        if (settings.global.verbose)
+        // Build set of filters that have both exposure times and S/N coefficients in config
+        std::unordered_set<string> configFilters;
+        for (const auto &kv : settings.scatterCluster.exposures)
         {
-            for (size_t f = 0; f < filters.size(); ++f)
-                cout << f << ' ' << filters.at(f) << endl;
+            if (kv.second > 0 && settings.scatterCluster.s2nCoeffs.count(kv.first))
+            {
+                configFilters.insert(kv.first);
+            }
         }
 
-        for (auto f : filters)
-            exposureTimes.push_back(getExposureTime(settings, f));
+        // Compute intersection: filters present in both photometry and config
+        for (size_t f = 0; f < filters.size(); ++f)
+        {
+            if (configFilters.count(filters[f]))
+            {
+                outputFilters.push_back(filters[f]);
+                filterIndices.push_back(f);
+                exposureTimes.push_back(getExposureTime(settings, filters[f]));
+            }
+        }
 
-        for (auto s : ret.second)
+        if (outputFilters.empty())
+        {
+            cerr << "No filters in common between photometry and scatter config" << endl;
+            cerr << "Photometry filters: ";
+            for (const auto &f : filters) cerr << f << " ";
+            cerr << endl;
+            cerr << "Config filters: ";
+            for (const auto &f : configFilters) cerr << f << " ";
+            cerr << endl;
+            exit(-1);
+        }
+
+        if (settings.global.verbose)
+        {
+            cout << "Using " << outputFilters.size() << " filters (intersection):" << endl;
+            for (size_t f = 0; f < outputFilters.size(); ++f)
+                cout << "  " << f << " " << outputFilters[f] << " (exposure: " << exposureTimes[f] << "h)" << endl;
+        }
+
+        for (auto &s : ret.second)
         {
             bool isFS = std::stoi(s.id) > 1000000;
             if (meetsMagCutoff(settings, s) && meetsStageCutoff(s, isFS))
             {
                 bool okay = true;
 
-                for (size_t f = 0; f < filters.size(); ++f)
+                for (size_t f = 0; f < outputFilters.size(); ++f)
                 {
-                    auto filter = filters.at(f);
+                    auto filter = outputFilters[f];
+                    auto origIdx = filterIndices[f];
                     auto exposureTime = exposureTimes[f];
 
                     if (exposureTime > 0)
                     {
-                        auto s2n    = signalToNoise (settings,
-                                                     s.obsPhot.at(f),
-                                                     exposureTime,
-                                                     filter);
+                        auto s2n = signalToNoise(settings,
+                                                 s.obsPhot.at(origIdx),
+                                                 exposureTime,
+                                                 filter);
 
                         if (s2n < settings.scatterCluster.limitS2N)
-                        {   // large photometric errors can lock mcmc during burnin
-                            // Negative variances are ignored by mpiMcmc
-                            // There's special code to check for negatives when we output stars (conversion to sigma)
+                        {
                             okay = false;
                             break;
                         }
@@ -228,7 +212,7 @@ int main (int argc, char *argv[])
 
         if (systems.empty())
         {
-            cerr << "No valid input photometry after considering mag and stage cuttoffs" << endl;
+            cerr << "No valid input photometry after considering mag and stage cutoffs" << endl;
             exit(0);
         }
     }
@@ -237,55 +221,61 @@ int main (int argc, char *argv[])
 
     for (auto &s : systems)
     {
-        for (size_t f = 0; f < filters.size(); ++f)
+        for (size_t f = 0; f < outputFilters.size(); ++f)
         {
-            auto filter = filters.at(f);
+            auto filter = outputFilters[f];
+            auto origIdx = filterIndices[f];
             auto exposureTime = exposureTimes[f];
 
             if (exposureTime > 0)
             {
-                auto s2n    = signalToNoise (settings,
-                                             s.obsPhot.at(f),
-                                             exposureTime,
-                                             filter);
+                auto s2n = signalToNoise(settings,
+                                         s.obsPhot.at(origIdx),
+                                         exposureTime,
+                                         filter);
 
-                auto sigma  = 1 / s2n;
+                auto sigma = 1 / s2n;
 
-                auto targetSigma = settings.scatterCluster.crowded ? 0.04 : 0.01;
+                sigma = std::max(sigma, settings.scatterCluster.minSigma);
 
-                sigma = std::max(sigma, targetSigma);
-
-                s.variance.at(f) = sigma * sigma;
+                s.variance.at(origIdx) = sigma * sigma;
 
                 std::normal_distribution<double> normDist(0., sigma);
-                s.obsPhot.at(f) += normDist(gen);
+                s.obsPhot.at(origIdx) += normDist(gen);
             }
         }
     }
 
-    string filename = settings.global.files.output + ".scatter.out";
-    std::ofstream fout(filename);
+    // Determine output file
+    string outputFile;
+    if (!settings.scatterCluster.outputFile.empty())
+    {
+        outputFile = settings.scatterCluster.outputFile;
+    }
+    else
+    {
+        outputFile = settings.global.files.output + ".scatter.out";
+    }
+
+    std::ofstream fout(outputFile);
 
     if (!fout)
     {
-        cerr << "***Error: Photometry file " << filename << " was not found.***" << endl;
+        cerr << "***Error: Could not create output file " << outputFile << "***" << endl;
         cerr << "[Exiting...]" << endl;
-        exit (-1);
+        exit(-1);
     }
 
     // Output photometry header
-    // All floating point have decimal precision = 3
     fout << setprecision(3) << fixed;
 
     fout << setw(4) << "id" << ' ';
 
-    for (auto f : filters)
-        if (getExposureTime(settings, f) > 0)
-            fout << setw(6) << f << ' ';
+    for (const auto &f : outputFilters)
+        fout << setw(6) << f << ' ';
 
-    for (auto f : filters)
-        if (getExposureTime(settings, f) > 0)
-            fout << setw(6) << ("sig" + f) << ' ';
+    for (const auto &f : outputFilters)
+        fout << setw(6) << ("sig" + f) << ' ';
 
     fout << setw(7) <<     "mass1" << ' '
          << setw(9) << "massRatio" << ' '
@@ -296,28 +286,21 @@ int main (int argc, char *argv[])
 
     for (size_t i = 0; i < systems.size(); ++i)
     {
-        auto s = systems.at(i);
+        auto &s = systems[i];
 
         fout << setw(4) << (i + 1) << ' ';
 
-        for (size_t f = 0; f < filters.size(); ++f)
+        for (size_t f = 0; f < outputFilters.size(); ++f)
         {
-            if (exposureTimes[f] > 0)
-            {
-                fout << setw(6) << s.obsPhot[f]
-                     << ' ';
-            }
+            auto origIdx = filterIndices[f];
+            fout << setw(6) << s.obsPhot[origIdx] << ' ';
         }
 
-        for (size_t f = 0; f < filters.size(); ++f)
+        for (size_t f = 0; f < outputFilters.size(); ++f)
         {
-            if (exposureTimes[f] > 0)
-            {
-                auto v = s.variance[f];
-
-                fout << setw(6) << (v < 0 ? v : sqrt (v))
-                     << ' ';
-            }
+            auto origIdx = filterIndices[f];
+            auto v = s.variance[origIdx];
+            fout << setw(6) << (v < 0 ? v : sqrt(v)) << ' ';
         }
 
         fout << setw(7) << s.primary.mass       << ' '
@@ -328,6 +311,5 @@ int main (int argc, char *argv[])
              << endl;
     }
 
-
-    return (0);
+    return 0;
 }

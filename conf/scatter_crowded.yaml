@@ -1,0 +1,40 @@
+# Scatter configuration for crowded fields
+# Uses modified S/N coefficients for crowded-field photometry
+
+brightLimit:    -10   # apparent mags, removes bright stars (e.g., RGB)
+faintLimit:     30    # apparent mags, removes faint stars (e.g., faint MS and WDs)
+relevantFilt:   0     # filter index for limits (0 = bluest band)
+limitS2N:       1     # removes objects with low signal-to-noise
+minSigma:       0.04  # floor for photometric uncertainty (higher for crowded fields)
+
+exposures:  # exposure times in hours
+    U:       1
+    B:       1
+    V:       1
+    R:       1
+    I:       1
+    J:       1
+    H:       1
+    K:       1
+    UVf275w: 1
+    UVf336w: 1
+    UVf438w: 1
+    F606W:   1
+    F814W:   1
+
+# Signal-to-noise coefficients: logS2N = a - b * mag
+# Crowded-field specific coefficients for HST UV filters
+s2nCoeffs:
+    U:       [9.33989,  0.3375778]
+    B:       [10.0478,  0.3462758]
+    V:       [10.48098, 0.3682010]
+    R:       [10.71151, 0.3837847]
+    I:       [10.61035, 0.3930941]
+    J:       [9.282385, 0.3862580]
+    H:       [9.197463, 0.3970419]
+    K:       [9.024068, 0.3985604]
+    UVf275w: [6.7302, 0.2090]
+    UVf336w: [6.9292, 0.2090]
+    UVf438w: [7.2452, 0.2090]
+    F606W:   [7.0797, 0.2090]
+    F814W:   [7.0797, 0.2090]

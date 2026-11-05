@@ -20,3 +20,18 @@ target_include_directories(test_noBinaries PRIVATE
 
 include(GoogleTest)
 gtest_discover_tests(test_noBinaries)
+
+# Scatter config tests
+add_executable(test_scatterConfig test_scatterConfig.cpp)
+
+target_link_libraries(test_scatterConfig
+    yaml-cpp
+    GTest::gtest
+    GTest::gtest_main
+)
+
+target_compile_definitions(test_scatterConfig PRIVATE
+    TEST_CONF_DIR="${CMAKE_SOURCE_DIR}/conf"
+)
+
+gtest_discover_tests(test_scatterConfig)

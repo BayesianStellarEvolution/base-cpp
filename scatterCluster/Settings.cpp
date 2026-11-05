@@ -12,6 +12,7 @@ using std::endl;
 using std::istringstream;
 using std::string;
 using std::map;
+using std::pair;
 using YAML::Node;
 using YAML::LoadFile;
 
@@ -52,34 +53,63 @@ void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
 
     global.fromCLI(argc, argv);
     fromCLI(argc, argv);
+
+    // Require --scatterConfig
+    if (scatterCluster.scatterConfig.empty())
+    {
+        cerr << "Error: --scatterConfig is required\n" << endl;
+        printUsage();
+        exit(EXIT_FAILURE);
+    }
+
+    // Load scatter configuration
+    loadScatterConfig(scatterCluster.scatterConfig);
 }
 
 
 void Settings::fromYaml(const string& yamlFile)
 {
+    // No scatterCluster-specific settings in base9.yaml anymore
+    // All scatter settings come from the separate scatter config file
+}
+
+
+void Settings::loadScatterConfig(const string& configFile)
+{
     Node configNode;
 
     try
     {
-        configNode = LoadFile(yamlFile);
+        configNode = LoadFile(configFile);
     }
     catch (YAML::BadFile &e)
     {
-        cerr << "Configuration file '" << yamlFile << "' not found." << endl;
+        cerr << "Scatter configuration file '" << configFile << "' not found." << endl;
         exit(1);
     }
 
-    Node scatterConfNode = global.getNode(configNode, "scatterCluster");
-
-    scatterCluster.brightLimit = global.getOrRequest<double>(scatterConfNode, "brightLimit");
-    scatterCluster.faintLimit = global.getOrRequest<double>(scatterConfNode, "faintLimit");
-    scatterCluster.relevantFilt = global.getOrRequest<int>(scatterConfNode, "relevantFilt");
-    scatterCluster.limitS2N = global.getOrRequest<double>(scatterConfNode, "limitS2N");
-    scatterCluster.crowded = global.getOrRequest<bool>(scatterConfNode, "crowded");
+    scatterCluster.brightLimit = global.getOrRequest<double>(configNode, "brightLimit");
+    scatterCluster.faintLimit = global.getOrRequest<double>(configNode, "faintLimit");
+    scatterCluster.relevantFilt = global.getOrRequest<int>(configNode, "relevantFilt");
+    scatterCluster.limitS2N = global.getOrRequest<double>(configNode, "limitS2N");
+    scatterCluster.minSigma = global.getOrRequest<double>(configNode, "minSigma");
 
     {
-        auto tNode = global.getNode(scatterConfNode, "exposures");
+        auto tNode = global.getNode(configNode, "exposures");
         scatterCluster.exposures = tNode.as<map<string, double>>();
+    }
+
+    {
+        auto tNode = global.getNode(configNode, "s2nCoeffs");
+        for (auto it = tNode.begin(); it != tNode.end(); ++it)
+        {
+            string filter = it->first.as<string>();
+            auto coeffs = it->second.as<std::vector<double>>();
+            if (coeffs.size() >= 2)
+            {
+                scatterCluster.s2nCoeffs[filter] = {coeffs[0], coeffs[1]};
+            }
+        }
     }
 }
 
@@ -95,12 +125,13 @@ void Settings::fromCLI(int argc, char **argv)
     }
 
     static struct option long_options[] = {
+        {"scatterConfig", required_argument, 0, 'c'},
+        {"output", required_argument, 0, 'o'},
         {"brightLimit", required_argument, 0, 0xE4},
         {"faintLimit", required_argument, 0, 0xE3},
         {"relevantFilt", required_argument, 0, 0xE2},
         {"limitS2N", required_argument, 0, 0xE1},
-        {"scatterFile", required_argument, 0, 0xDE},
-        {"help", no_argument, 0, 0xDB},
+        {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
 
@@ -108,10 +139,18 @@ void Settings::fromCLI(int argc, char **argv)
 
     optind = 0;
 
-    while ((c = getopt_long(argc, t_argv, "", long_options, &option_index)) != (-1))
+    while ((c = getopt_long(argc, t_argv, "o:", long_options, &option_index)) != (-1))
     {
         switch (c)
         {
+            case 'c':
+                scatterCluster.scatterConfig = optarg;
+                break;
+
+            case 'o':
+                scatterCluster.outputFile = optarg;
+                break;
+
             case 0xE4:
                 istringstream(string(optarg)) >> scatterCluster.brightLimit;
                 break;
@@ -128,11 +167,7 @@ void Settings::fromCLI(int argc, char **argv)
                 istringstream(string(optarg)) >> scatterCluster.limitS2N;
                 break;
 
-            case 0xDE:
-                global.files.scatter = optarg;
-                break;
-
-            case 0xDB:
+            case 'h':
                 printUsage();
                 exit(EXIT_SUCCESS);
 
@@ -161,17 +196,24 @@ void Settings::printUsage()
     cerr << "Adds realistic photometric scatter to simulated cluster data\n";
     cerr << "based on exposure times and signal-to-noise characteristics.\n\n";
 
-    cerr << "Application-Specific Options:\n";
-    cerr << "  --brightLimit <float>     Bright magnitude limit (remove bright stars)\n";
-    cerr << "  --faintLimit <float>      Faint magnitude limit (remove faint stars)\n";
+    cerr << "Usage: scatterCluster --scatterConfig <file> [options]\n\n";
+
+    cerr << "Required:\n";
+    cerr << "  --scatterConfig <path>    Scatter specification YAML file\n";
+    cerr << "\n";
+
+    cerr << "Optional:\n";
+    cerr << "  -o, --output <path>       Output file path (default: <outputFileBase>.scatter.out)\n";
+    cerr << "  --photFile <path>         Input photometry file (default: <outputFileBase>.sim.out)\n";
+    cerr << "\n";
+
+    cerr << "Overrides (from scatter config):\n";
+    cerr << "  --brightLimit <float>     Bright magnitude limit\n";
+    cerr << "  --faintLimit <float>      Faint magnitude limit\n";
     cerr << "  --relevantFilt <int>      Filter index for limits (0 = bluest)\n";
     cerr << "  --limitS2N <float>        Signal-to-noise threshold\n";
-    cerr << "  --scatterFile <path>      Output scatter file path\n";
     cerr << "\n";
 
-    cerr << "Additional Parameters (from YAML config):\n";
-    cerr << "  exposures                 Exposure times per filter\n";
-    cerr << "  crowded                   Use crowded-field S/N model\n";
+    cerr << "Example scatter configs: conf/scatter_uncrowded.yaml, conf/scatter_crowded.yaml\n";
     cerr << "\n";
-
 }

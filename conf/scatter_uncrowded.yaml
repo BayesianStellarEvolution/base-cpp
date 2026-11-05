@@ -1,0 +1,48 @@
+# Scatter configuration for uncrowded fields
+# Based on KPNO 4m + Mosaic (UBVRI) or Flamingos (JHK)
+# Assumes dark time, seeing=1.1", airmass=1.2, scaling by sqrt(exptime)
+
+brightLimit:    -10   # apparent mags, removes bright stars (e.g., RGB)
+faintLimit:     30    # apparent mags, removes faint stars (e.g., faint MS and WDs)
+relevantFilt:   0     # filter index for limits (0 = bluest band)
+limitS2N:       1     # removes objects with low signal-to-noise
+minSigma:       0.01  # floor for photometric uncertainty
+
+exposures:  # exposure times in hours
+    U:       1
+    B:       1
+    V:       1
+    R:       1
+    I:       1
+    J:       1
+    H:       1
+    K:       1
+    UVf275w: 1
+    UVf336w: 1
+    UVf438w: 1
+    F606W:   1
+    F814W:   1
+    G:       1
+    G_BP:    1
+    G_RP:    1
+
+# Signal-to-noise coefficients: logS2N = a - b * mag
+# Linear fits of mag vs. log(S/N) from CCDTIME results
+s2nCoeffs:
+    U:       [9.33989,  0.3375778]
+    B:       [10.0478,  0.3462758]
+    V:       [10.48098, 0.3682010]
+    R:       [10.71151, 0.3837847]
+    I:       [10.61035, 0.3930941]
+    J:       [9.282385, 0.3862580]
+    H:       [9.197463, 0.3970419]
+    K:       [9.024068, 0.3985604]
+    UVf275w: [7.804164, 0.2833815]
+    UVf336w: [7.779995, 0.2705339]
+    UVf438w: [7.958377, 0.2727768]
+    F606W:   [8.271906, 0.2647206]
+    F814W:   [8.272662, 0.2634004]
+    # Gaia filter coefficients (Marina Kounkel)
+    G:       [-6.2043903, 0.33251351]
+    G_BP:    [-5.5271903, 0.24522901]
+    G_RP:    [-6.0969793, 0.30982647]
