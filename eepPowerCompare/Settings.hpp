@@ -26,7 +26,7 @@ class Settings
     bool noBinaries = false;
 
   private:
-    void printUsage();
+    void printUsage(bool verbose = false);
 };
 
 #endif

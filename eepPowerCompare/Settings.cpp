@@ -41,7 +41,7 @@ void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
     if (wantsHelp)
     {
         GlobalSettings::printUsage(wantsVerbose);
-        printUsage();
+        printUsage(wantsVerbose);
         exit(EXIT_SUCCESS);
     }
 
@@ -138,7 +138,7 @@ void Settings::fromCLI(int argc, char **argv)
 }
 
 
-void Settings::printUsage()
+void Settings::printUsage(bool verbose)
 {
     cerr << "\neepPowerCompare - EEP Interpolation Power Comparison\n";
     cerr << "====================================================\n\n";
@@ -151,6 +151,15 @@ void Settings::printUsage()
     cerr << "  --maxPower <int>        Maximum EEP power to test (default: 3)\n";
     cerr << "  --referencePower <int>  Reference power for comparison (default: 0)\n";
     cerr << "  --gridPoints <int>      Grid points per parameter (default: 5)\n";
+    if (verbose) {
+        cerr << "      Samples a 3D grid of gridPoints^3 total points, centered on the\n";
+        cerr << "      cluster starting values from the config file:\n";
+        cerr << "        - logAge:  startingLogAge ± 0.1\n";
+        cerr << "        - [Fe/H]:  startingFe_H ± 0.1\n";
+        cerr << "        - distMod: startingDistMod ± 0.2\n";
+        cerr << "      At each point, likelihood is computed at every power level.\n";
+        cerr << "      Output Std Dev measures shape distortion vs reference power.\n\n";
+    }
     cerr << "  --threads <int>         Number of threads (default: 4)\n";
     cerr << "  --noBinaries            Use no-binary likelihood\n";
     cerr << "\n";
