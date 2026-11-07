@@ -21,7 +21,7 @@ class Settings
     int minPower = -3;
     int maxPower = 3;
     int referencePower = 0;
-    int gridPoints = 10;
+    int gridPoints = 5;
     unsigned int threads = 4;
     bool noBinaries = false;
 

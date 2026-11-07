@@ -124,6 +124,7 @@ void Settings::fromCLI(int argc, char **argv)
     int c, option_index;
 
     optind = 0;
+    opterr = 0;  // Suppress errors - GlobalSettings handles unknown option reporting
 
     while ((c = getopt_long(argc, t_argv, "", long_options, &option_index)) != (-1))
     {

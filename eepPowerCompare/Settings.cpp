@@ -82,6 +82,7 @@ void Settings::fromCLI(int argc, char **argv)
     int c, option_index;
 
     optind = 0;
+    opterr = 0;  // Suppress errors - GlobalSettings handles unknown option reporting
 
     while ((c = getopt_long(argc, t_argv, "", long_options, &option_index)) != (-1))
     {
@@ -149,7 +150,7 @@ void Settings::printUsage()
     cerr << "  --minPower <int>        Minimum EEP power to test (default: -3)\n";
     cerr << "  --maxPower <int>        Maximum EEP power to test (default: 3)\n";
     cerr << "  --referencePower <int>  Reference power for comparison (default: 0)\n";
-    cerr << "  --gridPoints <int>      Grid points per parameter (default: 10)\n";
+    cerr << "  --gridPoints <int>      Grid points per parameter (default: 5)\n";
     cerr << "  --threads <int>         Number of threads (default: 4)\n";
     cerr << "  --noBinaries            Use no-binary likelihood\n";
     cerr << "\n";

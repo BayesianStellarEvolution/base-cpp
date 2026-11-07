@@ -27,6 +27,7 @@ const double TWO_M_PI = 2 * M_PI;
 double computeLogLikelihood(
     Cluster& clust,
     Model& evoModels,
+    Isochrone& isochrone,
     vector<StellarSystem>& systems,
     const double* sysVars,
     const double* sysVar2,
@@ -39,23 +40,19 @@ double computeLogLikelihood(
     bool noBinaries,
     int eepPower)
 {
-    Isochrone* isochrone = evoModels.mainSequenceEvol->deriveIsochrone(clust.feh, clust.yyy, clust.age);
-
     vector<double> post;
     if (noBinaries) {
-        post = margEvolveNoBinaries(clust, evoModels, *isochrone, pool,
+        post = margEvolveNoBinaries(clust, evoModels, isochrone, pool,
                                     sysVars, sysVar2, sysObs,
                                     systems.size(), howManyFiltsAligned, howManyFilts,
                                     false, eepPower);
     } else {
-        post = margEvolveWithBinary(clust, evoModels, *isochrone, pool,
+        post = margEvolveWithBinary(clust, evoModels, isochrone, pool,
                                     systems,
                                     sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi,
                                     howManyFiltsAligned, howManyFilts,
                                     false, eepPower);
     }
-
-    delete isochrone;
 
     double logLike = 0.0;
     for (size_t i = 0; i < systems.size(); ++i) {
@@ -80,9 +77,7 @@ int main(int argc, char** argv) {
     }
 
     // Load models
-    cerr << "Loading models..." << std::flush;
     Model evoModels = makeModel(settings.global);
-    cerr << " Done." << endl;
 
     // Load photometry
     vector<double> filterPriorMin, filterPriorMax;
@@ -173,6 +168,12 @@ int main(int argc, char** argv) {
         for (int iFeh = 0; iFeh < settings.gridPoints; ++iFeh) {
             double feh = fehCenter - fehSpan/2 + fehSpan * iFeh / (settings.gridPoints - 1);
 
+            // Derive isochrone once per (age, feh) pair - doesn't depend on mod or power
+            Cluster isoClust = baseClust;
+            isoClust.age = age;
+            isoClust.feh = feh;
+            Isochrone* isochrone = evoModels.mainSequenceEvol->deriveIsochrone(isoClust.feh, isoClust.yyy, isoClust.age);
+
             for (int iMod = 0; iMod < settings.gridPoints; ++iMod) {
                 double mod = modCenter - modSpan/2 + modSpan * iMod / (settings.gridPoints - 1);
 
@@ -184,7 +185,7 @@ int main(int argc, char** argv) {
                 for (int power = settings.minPower; power <= settings.maxPower; ++power) {
                     int powerIdx = power - settings.minPower;
                     logLikes[powerIdx][gridIdx] = computeLogLikelihood(
-                        clust, evoModels, systems,
+                        clust, evoModels, *isochrone, systems,
                         sysVars.data(), sysVar2.data(), sysObs.data(),
                         sysFluxLo.data(), sysFluxHi.data(),
                         howManyFiltsAligned, howManyFilts,
@@ -192,6 +193,8 @@ int main(int argc, char** argv) {
                 }
                 ++gridIdx;
             }
+
+            delete isochrone;
         }
         cerr << "  Age slice " << (iAge + 1) << "/" << settings.gridPoints << " complete" << endl;
     }
