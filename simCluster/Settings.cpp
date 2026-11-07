@@ -13,6 +13,17 @@ using std::string;
 using YAML::Node;
 using YAML::LoadFile;
 
+// Application-specific options (file scope for access from loadSettings)
+static struct option long_options[] = {
+    {"nStars", required_argument, 0, 0xE9},
+    {"percentBinary", required_argument, 0, 0xE8},
+    {"percentDB", required_argument, 0, 0xE7},
+    {"nFieldStars", required_argument, 0, 0xE6},
+    {"noWDs", no_argument, 0, 0xAC},
+    {"help", no_argument, 0, 0xDB},
+    {0, 0, 0, 0}
+};
+
 
 void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
 {
@@ -28,14 +39,12 @@ void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
     }
     if (wantsHelp)
     {
-        GlobalSettings::printUsage();
+        GlobalSettings::printUsage(wantsVerbose);
         printUsage();
-        if (wantsVerbose)
-            GlobalSettings::printVerboseUsage();
         exit(EXIT_SUCCESS);
     }
 
-    global.fromCLI(argc, argv);
+    global.fromCLI(argc, argv, long_options);
 
     if (!global.files.config.empty())
     {
@@ -48,7 +57,7 @@ void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
         fromYaml(defaultFile);
     }
 
-    global.fromCLI(argc, argv);
+    global.fromCLI(argc, argv, long_options);
     fromCLI(argc, argv);
 }
 
@@ -85,16 +94,6 @@ void Settings::fromCLI(int argc, char **argv)
         t_argv[i] = new char[strlen(argv[i]) + 1];
         strcpy(t_argv[i], argv[i]);
     }
-
-    static struct option long_options[] = {
-        {"nStars", required_argument, 0, 0xE9},
-        {"percentBinary", required_argument, 0, 0xE8},
-        {"percentDB", required_argument, 0, 0xE7},
-        {"nFieldStars", required_argument, 0, 0xE6},
-        {"noWDs", no_argument, 0, 0xAC},
-        {"help", no_argument, 0, 0xDB},
-        {0, 0, 0, 0}
-    };
 
     int c, option_index;
 

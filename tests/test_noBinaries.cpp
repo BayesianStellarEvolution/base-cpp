@@ -3,8 +3,10 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <fstream>
 #include <memory>
 #include <random>
+#include <string>
 #include <vector>
 
 #include "Cluster.hpp"
@@ -21,6 +23,7 @@ class NoBinariesTest : public ::testing::Test {
 public:
     static int savedArgc;
     static char** savedArgv;
+    static std::string photFile;
 
 protected:
     static Model* evoModels;
@@ -29,6 +32,7 @@ protected:
     static size_t howManyFilts;
     static size_t howManyFiltsAligned;
     static bool initialized;
+    static std::vector<StellarSystem> loadedSystems;
 
     static void SetUpTestSuite() {
         if (initialized) return;
@@ -58,9 +62,21 @@ protected:
 
         evoModels = new Model(makeModel(settings));
 
-        // Restrict to test filters (Gaia DR3)
-        std::vector<std::string> testFilters = {"G", "G_BP", "G_RP"};
-        evoModels->restrictFilters(testFilters, false);
+        // If photFile provided, load and use its filters; otherwise use test filters
+        if (!photFile.empty()) {
+            std::ifstream fin(photFile);
+            if (!fin) {
+                throw std::runtime_error("Cannot open photometry file: " + photFile);
+            }
+            std::vector<double> filterPriorMin, filterPriorMax;
+            auto [filterNames, systems] = base::utility::readPhotometry(fin, filterPriorMin, filterPriorMax, settings);
+            evoModels->restrictFilters(filterNames, false);
+            loadedSystems = std::move(systems);
+            std::cerr << "Loaded " << loadedSystems.size() << " stars from " << photFile << "\n";
+        } else {
+            std::vector<std::string> testFilters = {"G", "G_BP", "G_RP"};
+            evoModels->restrictFilters(testFilters, false);
+        }
 
         isochrone = evoModels->mainSequenceEvol->deriveIsochrone(clust.feh, clust.yyy, clust.age);
         howManyFilts = evoModels->absCoeffs.size();
@@ -101,6 +117,18 @@ protected:
             systems.push_back(sys);
         }
         return systems;
+    }
+
+    // Returns loaded systems if photFile was provided, otherwise generates n synthetic systems
+    // If n < loadedSystems.size(), returns first n loaded systems
+    vector<StellarSystem> getSystems(size_t n = 100, unsigned seed = 42) {
+        if (!loadedSystems.empty()) {
+            if (n >= loadedSystems.size()) {
+                return loadedSystems;
+            }
+            return vector<StellarSystem>(loadedSystems.begin(), loadedSystems.begin() + n);
+        }
+        return createSystems(n, seed);
     }
 
     // Prepare aligned arrays for SIMD (both x86 SSE and ARM NEON)
@@ -154,11 +182,13 @@ size_t NoBinariesTest::howManyFiltsAligned = 0;
 bool NoBinariesTest::initialized = false;
 int NoBinariesTest::savedArgc = 0;
 char** NoBinariesTest::savedArgv = nullptr;
+std::string NoBinariesTest::photFile;
+std::vector<StellarSystem> NoBinariesTest::loadedSystems;
 
 TEST_F(NoBinariesTest, ReturnsFiniteValues) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(100);
+    auto systems = getSystems(100);
     vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
     prepareAlignedArrays(systems, sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi);
 
@@ -178,7 +208,7 @@ TEST_F(NoBinariesTest, ReturnsFiniteValues) {
 TEST_F(NoBinariesTest, DeterministicResults) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(50, 123);
+    auto systems = getSystems(50, 123);
     vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
     prepareAlignedArrays(systems, sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi);
 
@@ -217,7 +247,7 @@ TEST_F(NoBinariesTest, HandlesEmptyInput) {
 TEST_F(NoBinariesTest, MatchesScalarReference) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(50, 456);
+    auto systems = getSystems(50, 456);
 
     // Get reference results (always uses scalar implementation)
     auto refResults = margEvolveNoBinaries_Reference(
@@ -260,7 +290,7 @@ TEST_F(NoBinariesTest, MatchesScalarReference) {
 TEST_F(NoBinariesTest, NoBinariesSingleSystem) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(1, 777);
+    auto systems = getSystems(1, 777);
 
     auto refResults = margEvolveNoBinaries_Reference(
         clust, *evoModels, *isochrone,
@@ -288,7 +318,7 @@ TEST_F(NoBinariesTest, NoBinariesSingleSystem) {
 TEST_F(NoBinariesTest, NoBinariesLargeCount) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(500, 888);
+    auto systems = getSystems(500, 888);
 
     auto refResults = margEvolveNoBinaries_Reference(
         clust, *evoModels, *isochrone,
@@ -321,7 +351,7 @@ TEST_F(NoBinariesTest, NoBinariesLargeCount) {
 TEST_F(NoBinariesTest, BinarySIMDMatchesReference) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(50, 999);
+    auto systems = getSystems(50, 999);
 
     // Get reference results
     auto refResults = margEvolveWithBinary(
@@ -361,7 +391,7 @@ TEST_F(NoBinariesTest, BinarySIMDMatchesReference) {
 TEST_F(NoBinariesTest, BinarySIMDSingleSystem) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(1, 111);
+    auto systems = getSystems(1, 111);
 
     auto refResults = margEvolveWithBinary(
         clust, systems, *evoModels, *isochrone, pool,
@@ -391,7 +421,7 @@ TEST_F(NoBinariesTest, BinarySIMDSingleSystem) {
 TEST_F(NoBinariesTest, BinarySIMDDeterministic) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(25, 222);
+    auto systems = getSystems(25, 222);
     vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
     prepareAlignedArrays(systems, sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi);
 
@@ -422,7 +452,7 @@ TEST_F(NoBinariesTest, BinarySIMDDeterministic) {
 TEST_F(NoBinariesTest, BinarySIMDLargeCount) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(500, 333);
+    auto systems = getSystems(500, 333);
 
     auto refResults = margEvolveWithBinary(
         clust, systems, *evoModels, *isochrone, pool,
@@ -581,12 +611,12 @@ TEST_F(NoBinariesTest, BinarySIMDVarianceRange) {
 TEST_F(NoBinariesTest, BinarySIMDInterpolationPowers) {
     ASSERT_TRUE(initialized) << "Models not initialized";
 
-    auto systems = createSystems(20, 666);
+    auto systems = getSystems(20, 666);
     vector<double> sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi;
     prepareAlignedArrays(systems, sysVars, sysVar2, sysObs, sysFluxLo, sysFluxHi);
 
-    // Test different interpolation powers (0, 1, 2)
-    for (int power = 0; power <= 2; ++power) {
+    // Test different interpolation powers (-3 to 3)
+    for (int power = -3; power <= 3; ++power) {
         auto refResults = margEvolveWithBinary(
             clust, systems, *evoModels, *isochrone, pool,
             false, power);
@@ -616,6 +646,14 @@ TEST_F(NoBinariesTest, BinarySIMDInterpolationPowers) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
+
+    // Parse --photFile before passing to test suite
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--photFile" && i + 1 < argc) {
+            NoBinariesTest::photFile = argv[i + 1];
+            break;
+        }
+    }
 
     // Pass remaining args to the test suite for config loading
     NoBinariesTest::savedArgc = argc;

@@ -153,6 +153,7 @@ add_subdirectory(scatterCluster)
 add_subdirectory(simCluster)
 add_subdirectory(multiPopMcmc)
 add_subdirectory(hierarchicalWDs)
+add_subdirectory(eepPowerCompare)
 
 # Benchmarks (optional, requires google-benchmark)
 option(BASE9_ENABLE_BENCHMARKS "Build benchmarks (requires google-benchmark)" OFF)

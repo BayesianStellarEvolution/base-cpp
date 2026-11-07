@@ -10,6 +10,13 @@ using std::cerr;
 using std::endl;
 using std::string;
 
+// Application-specific options (file scope for access from loadSettings)
+static struct option long_options[] = {
+    {"onlyWDs", no_argument, 0, 0x9F},
+    {"help", no_argument, 0, 0xDB},
+    {0, 0, 0, 0}
+};
+
 
 void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
 {
@@ -25,14 +32,12 @@ void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
     }
     if (wantsHelp)
     {
-        GlobalSettings::printUsage();
+        GlobalSettings::printUsage(wantsVerbose);
         printUsage();
-        if (wantsVerbose)
-            GlobalSettings::printVerboseUsage();
         exit(EXIT_SUCCESS);
     }
 
-    global.fromCLI(argc, argv);
+    global.fromCLI(argc, argv, long_options);
 
     if (!global.files.config.empty())
     {
@@ -43,7 +48,7 @@ void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
         global.fromYaml(defaultFile);
     }
 
-    global.fromCLI(argc, argv);
+    global.fromCLI(argc, argv, long_options);
     fromCLI(argc, argv);
 }
 
@@ -57,12 +62,6 @@ void Settings::fromCLI(int argc, char **argv)
         t_argv[i] = new char[strlen(argv[i]) + 1];
         strcpy(t_argv[i], argv[i]);
     }
-
-    static struct option long_options[] = {
-        {"onlyWDs", no_argument, 0, 0x9F},
-        {"help", no_argument, 0, 0xDB},
-        {0, 0, 0, 0}
-    };
 
     int c, option_index;
 

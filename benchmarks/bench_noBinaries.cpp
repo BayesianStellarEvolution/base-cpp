@@ -251,6 +251,42 @@ BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveWithBinary_SIMD)
     ->Arg(1000)
     ->Arg(2000);
 
+// EEP power sweep benchmark - tests different interpolation powers
+// Args: {nSystems, eepPower}
+BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveWithBinary_EEPPower)(benchmark::State& state) {
+    if (!g_initialized) return;
+
+    int eepPower = state.range(1);
+
+    for (auto _ : state) {
+        auto result = margEvolveWithBinary(
+            g_clust, *g_evoModels, *g_isochrone, pool,
+            systems,
+            sysVars.data(), sysVar2.data(), sysObs.data(),
+            sysFluxLo.data(), sysFluxHi.data(),
+            g_howManyFiltsAligned, g_howManyFilts,
+            false, eepPower);
+        benchmark::DoNotOptimize(result);
+    }
+
+    state.SetItemsProcessed(state.iterations() * nSystems);
+    state.counters["stars"] = nSystems;
+    state.counters["filters"] = g_howManyFilts;
+    state.counters["eepPower"] = eepPower;
+}
+
+BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveWithBinary_EEPPower)
+    ->Unit(benchmark::kMillisecond)
+    ->Args({500, -3})
+    ->Args({500, -2})
+    ->Args({500, -1})
+    ->Args({500, 0})
+    ->Args({500, 1})
+    ->Args({500, 2})
+    ->Args({500, 3})
+    ->Args({500, 4})
+    ->Args({500, 5});
+
 int main(int argc, char** argv) {
     // Separate benchmark args from BASE-9 args
     // BASE-9 args: -c <config>

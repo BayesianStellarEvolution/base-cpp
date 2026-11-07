@@ -16,7 +16,7 @@ class GlobalSettings
     void loadSettings(int argc, char** argv, const std::string& defaultFile = "base9.yaml");
 
     void fromYaml (const std::string&);
-    void fromCLI (int, char **);
+    void fromCLI (int, char **, const struct option* appOptions = nullptr);
 
     bool modIsParallax = false;
     bool allowInvalidModels = false;
@@ -94,8 +94,7 @@ class GlobalSettings
     YAML::Node getNode (YAML::Node &, std::string);
     [[noreturn]] void exitWith (std::string);
 
-    static void printUsage();
-    static void printVerboseUsage();
+    static void printUsage(bool verbose = false);
 
     // Static helpers for interpolation power validation and step calculation
     static constexpr int EEP_POWER_MIN = -5;

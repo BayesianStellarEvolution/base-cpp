@@ -16,6 +16,18 @@ using std::pair;
 using YAML::Node;
 using YAML::LoadFile;
 
+// Application-specific options (file scope for access from loadSettings)
+static struct option long_options[] = {
+    {"scatterConfig", required_argument, 0, 'c'},
+    {"output", required_argument, 0, 'o'},
+    {"brightLimit", required_argument, 0, 0xE4},
+    {"faintLimit", required_argument, 0, 0xE3},
+    {"relevantFilt", required_argument, 0, 0xE2},
+    {"limitS2N", required_argument, 0, 0xE1},
+    {"help", no_argument, 0, 'h'},
+    {0, 0, 0, 0}
+};
+
 
 void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
 {
@@ -31,14 +43,12 @@ void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
     }
     if (wantsHelp)
     {
-        GlobalSettings::printUsage();
+        GlobalSettings::printUsage(wantsVerbose);
         printUsage();
-        if (wantsVerbose)
-            GlobalSettings::printVerboseUsage();
         exit(EXIT_SUCCESS);
     }
 
-    global.fromCLI(argc, argv);
+    global.fromCLI(argc, argv, long_options);
 
     if (!global.files.config.empty())
     {
@@ -51,7 +61,7 @@ void Settings::loadSettings(int argc, char** argv, const string& defaultFile)
         fromYaml(defaultFile);
     }
 
-    global.fromCLI(argc, argv);
+    global.fromCLI(argc, argv, long_options);
     fromCLI(argc, argv);
 
     // Require --scatterConfig
@@ -123,17 +133,6 @@ void Settings::fromCLI(int argc, char **argv)
         t_argv[i] = new char[strlen(argv[i]) + 1];
         strcpy(t_argv[i], argv[i]);
     }
-
-    static struct option long_options[] = {
-        {"scatterConfig", required_argument, 0, 'c'},
-        {"output", required_argument, 0, 'o'},
-        {"brightLimit", required_argument, 0, 0xE4},
-        {"faintLimit", required_argument, 0, 0xE3},
-        {"relevantFilt", required_argument, 0, 0xE2},
-        {"limitS2N", required_argument, 0, 0xE1},
-        {"help", no_argument, 0, 'h'},
-        {0, 0, 0, 0}
-    };
 
     int c, option_index;
 
