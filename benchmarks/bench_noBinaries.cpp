@@ -168,6 +168,7 @@ BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveNoBinaries_Reference)(benchmark:
 
 BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveNoBinaries_Reference)
     ->Unit(benchmark::kMillisecond)
+    ->Arg(1)
     ->Arg(100)
     ->Arg(500)
     ->Arg(1000)
@@ -192,6 +193,7 @@ BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveNoBinaries)(benchmark::State& st
 
 BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveNoBinaries)
     ->Unit(benchmark::kMillisecond)
+    ->Arg(1)
     ->Arg(100)
     ->Arg(500)
     ->Arg(1000)
@@ -215,6 +217,7 @@ BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveWithBinary)(benchmark::State& st
 
 BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveWithBinary)
     ->Unit(benchmark::kMillisecond)
+    ->Arg(1)
     ->Arg(100)
     ->Arg(500)
     ->Arg(1000)
@@ -242,6 +245,7 @@ BENCHMARK_DEFINE_F(NoBinariesFixture, MargEvolveWithBinary_SIMD)(benchmark::Stat
 
 BENCHMARK_REGISTER_F(NoBinariesFixture, MargEvolveWithBinary_SIMD)
     ->Unit(benchmark::kMillisecond)
+    ->Arg(1)
     ->Arg(100)
     ->Arg(500)
     ->Arg(1000)
