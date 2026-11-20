@@ -8,6 +8,8 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
+#include <string>
 #include <vector>
 
 #include "Cluster.hpp"
@@ -24,7 +26,12 @@ using std::vector;
 
 const double TWO_M_PI = 2 * M_PI;
 
-double computeLogLikelihood(
+struct LikelihoodResult {
+    double logLike;
+    int skippedStars;
+};
+
+LikelihoodResult computeLogLikelihood(
     Cluster& clust,
     Model& evoModels,
     Isochrone& isochrone,
@@ -55,15 +62,16 @@ double computeLogLikelihood(
     }
 
     double logLike = 0.0;
+    int skipped = 0;
     for (size_t i = 0; i < systems.size(); ++i) {
         if (post[i] > 0.0) {
             logLike += std::log(post[i]);
         } else {
-            logLike += -1e10;
+            ++skipped;
         }
     }
 
-    return logLike;
+    return {logLike, skipped};
 }
 
 int main(int argc, char** argv) {
@@ -146,111 +154,273 @@ int main(int argc, char** argv) {
     base::utility::ThreadPool pool(settings.threads);
 
     // Define parameter ranges (centered on starting values)
-    double ageCenter = baseClust.age;
-    double ageSpan = 0.2;
-    double fehCenter = baseClust.feh;
-    double fehSpan = 0.2;
-    double modCenter = baseClust.mod;
-    double modSpan = 0.4;
+    const double ageCenter = baseClust.age;
+    const double ageSpan = 0.2;
+    const double fehCenter = baseClust.feh;
+    const double fehSpan = 0.2;
 
-    int nPowers = settings.maxPower - settings.minPower + 1;
-    int nGridPoints = settings.gridPoints * settings.gridPoints * settings.gridPoints;
+    const int nPowers = settings.maxPower - settings.minPower + 1;
+    const int nGridPoints = settings.gridPoints * settings.gridPoints;
+    const bool refInRange = (settings.referencePower >= settings.minPower &&
+                             settings.referencePower <= settings.maxPower);
+
+    // Pre-compute grid coordinates (age x feh, distMod fixed - it doesn't interact with EEP power)
+    const double gridDenom = 1.0 / (settings.gridPoints - 1);
+    vector<double> ageGrid(settings.gridPoints), fehGrid(settings.gridPoints);
+    for (int i = 0; i < settings.gridPoints; ++i) {
+        double frac = i * gridDenom;
+        ageGrid[i] = ageCenter - ageSpan * 0.5 + ageSpan * frac;
+        fehGrid[i] = fehCenter - fehSpan * 0.5 + fehSpan * frac;
+    }
 
     vector<vector<double>> logLikes(nPowers, vector<double>(nGridPoints));
+    vector<double> refLogLikes(nGridPoints);
+    vector<long> skippedStars(nPowers, 0);
+    long refSkippedStars = 0;
 
     cerr << "Computing likelihoods on " << nGridPoints << " grid points for powers "
-         << settings.minPower << " to " << settings.maxPower << "..." << endl;
+         << settings.minPower << " to " << settings.maxPower;
+    if (!refInRange) {
+        cerr << " (plus reference power " << settings.referencePower << ")";
+    }
+    cerr << "..." << endl;
+
+    // Reusable cluster for likelihood computation (marg functions don't modify it)
+    Cluster clust = baseClust;
 
     int gridIdx = 0;
     for (int iAge = 0; iAge < settings.gridPoints; ++iAge) {
-        double age = ageCenter - ageSpan/2 + ageSpan * iAge / (settings.gridPoints - 1);
+        const double age = ageGrid[iAge];
+        clust.age = age;
 
         for (int iFeh = 0; iFeh < settings.gridPoints; ++iFeh) {
-            double feh = fehCenter - fehSpan/2 + fehSpan * iFeh / (settings.gridPoints - 1);
+            const double feh = fehGrid[iFeh];
+            clust.feh = feh;
 
-            // Derive isochrone once per (age, feh) pair - doesn't depend on mod or power
-            Cluster isoClust = baseClust;
-            isoClust.age = age;
-            isoClust.feh = feh;
-            Isochrone* isochrone = evoModels.mainSequenceEvol->deriveIsochrone(isoClust.feh, isoClust.yyy, isoClust.age);
+            // Derive isochrone once per (age, feh) pair
+            Isochrone* isochrone = evoModels.mainSequenceEvol->deriveIsochrone(feh, clust.yyy, age);
 
-            for (int iMod = 0; iMod < settings.gridPoints; ++iMod) {
-                double mod = modCenter - modSpan/2 + modSpan * iMod / (settings.gridPoints - 1);
-
-                Cluster clust = baseClust;
-                clust.age = age;
-                clust.feh = feh;
-                clust.mod = mod;
-
-                for (int power = settings.minPower; power <= settings.maxPower; ++power) {
-                    int powerIdx = power - settings.minPower;
-                    logLikes[powerIdx][gridIdx] = computeLogLikelihood(
-                        clust, evoModels, *isochrone, systems,
-                        sysVars.data(), sysVar2.data(), sysObs.data(),
-                        sysFluxLo.data(), sysFluxHi.data(),
-                        howManyFiltsAligned, howManyFilts,
-                        pool, settings.noBinaries, power);
-                }
-                ++gridIdx;
+            for (int power = settings.minPower; power <= settings.maxPower; ++power) {
+                auto result = computeLogLikelihood(
+                    clust, evoModels, *isochrone, systems,
+                    sysVars.data(), sysVar2.data(), sysObs.data(),
+                    sysFluxLo.data(), sysFluxHi.data(),
+                    howManyFiltsAligned, howManyFilts,
+                    pool, settings.noBinaries, power);
+                logLikes[power - settings.minPower][gridIdx] = result.logLike;
+                skippedStars[power - settings.minPower] += result.skippedStars;
             }
+
+            if (refInRange) {
+                refLogLikes[gridIdx] = logLikes[settings.referencePower - settings.minPower][gridIdx];
+            } else {
+                auto result = computeLogLikelihood(
+                    clust, evoModels, *isochrone, systems,
+                    sysVars.data(), sysVar2.data(), sysObs.data(),
+                    sysFluxLo.data(), sysFluxHi.data(),
+                    howManyFiltsAligned, howManyFilts,
+                    pool, settings.noBinaries, settings.referencePower);
+                refLogLikes[gridIdx] = result.logLike;
+                refSkippedStars += result.skippedStars;
+            }
+            ++gridIdx;
 
             delete isochrone;
         }
         cerr << "  Age slice " << (iAge + 1) << "/" << settings.gridPoints << " complete" << endl;
     }
 
-    // Compute statistics
-    int refIdx = settings.referencePower - settings.minPower;
-
     cout << "\n=== EEP Power Comparison Results ===" << endl;
     cout << "Reference power: " << settings.referencePower << endl;
-    cout << "Grid points: " << nGridPoints << " (" << settings.gridPoints << "^3)" << endl;
+    cout << "Grid points: " << nGridPoints << " (" << settings.gridPoints << "^2 age x feh)" << endl;
+    cout << "Grid spacing: age=" << std::fixed << std::setprecision(4) << (ageSpan / (settings.gridPoints - 1))
+         << ", feh=" << (fehSpan / (settings.gridPoints - 1)) << endl;
     cout << "Stars: " << systems.size() << ", Filters: " << howManyFilts << endl;
-    cout << "\n";
 
-    cout << std::setw(8) << "Power"
-         << std::setw(15) << "Mean Diff"
-         << std::setw(15) << "Std Dev"
-         << std::setw(15) << "Min Diff"
-         << std::setw(15) << "Max Diff"
-         << std::setw(12) << "Shape OK?"
-         << endl;
-    cout << std::string(80, '-') << endl;
+    // Show mass spacing for each power using isochrone at center values
+    cout << "\n--- Mass Resolution per EEP Power ---" << endl;
+    {
+        Isochrone* sampleIso = evoModels.mainSequenceEvol->deriveIsochrone(fehCenter, baseClust.yyy, ageCenter);
+        cout << std::setw(8) << "Power"
+             << std::setw(10) << "Steps"
+             << std::setw(14) << "Min dMass"
+             << std::setw(14) << "Max dMass"
+             << std::setw(14) << "Mean dMass"
+             << endl;
+        cout << std::string(60, '-') << endl;
 
-    for (int power = settings.minPower; power <= settings.maxPower; ++power) {
-        int powerIdx = power - settings.minPower;
+        for (int power = settings.minPower; power <= settings.maxPower; ++power) {
+            int isoIncrem = GlobalSettings::calcEepSteps(power);
+            double minDMass = std::numeric_limits<double>::max();
+            double maxDMass = 0.0;
+            double sumDMass = 0.0;
+            int nSegments = 0;
 
-        vector<double> diffs(nGridPoints);
-        for (int i = 0; i < nGridPoints; ++i) {
-            diffs[i] = logLikes[powerIdx][i] - logLikes[refIdx][i];
+            for (size_t m = 0; m < sampleIso->eeps.size() - 1; ++m) {
+                double dIsoMass = sampleIso->eeps[m + 1].mass - sampleIso->eeps[m].mass;
+                if (dIsoMass > 0.0) {
+                    double dMass = dIsoMass / isoIncrem;
+                    if (dMass < minDMass) minDMass = dMass;
+                    if (dMass > maxDMass) maxDMass = dMass;
+                    sumDMass += dMass;
+                    ++nSegments;
+                }
+            }
+
+            cout << std::setw(8) << power
+                 << std::setw(10) << isoIncrem
+                 << std::setw(14) << std::scientific << std::setprecision(4) << minDMass
+                 << std::setw(14) << maxDMass
+                 << std::setw(14) << (nSegments > 0 ? sumDMass / nSegments : 0.0)
+                 << endl;
         }
 
+        // Include reference power if out of range
+        if (!refInRange) {
+            int isoIncrem = GlobalSettings::calcEepSteps(settings.referencePower);
+            double minDMass = std::numeric_limits<double>::max();
+            double maxDMass = 0.0;
+            double sumDMass = 0.0;
+            int nSegments = 0;
+
+            for (size_t m = 0; m < sampleIso->eeps.size() - 1; ++m) {
+                double dIsoMass = sampleIso->eeps[m + 1].mass - sampleIso->eeps[m].mass;
+                if (dIsoMass > 0.0) {
+                    double dMass = dIsoMass / isoIncrem;
+                    if (dMass < minDMass) minDMass = dMass;
+                    if (dMass > maxDMass) maxDMass = dMass;
+                    sumDMass += dMass;
+                    ++nSegments;
+                }
+            }
+
+            cout << std::setw(8) << settings.referencePower << " (ref)"
+                 << std::setw(10) << isoIncrem
+                 << std::setw(14) << std::scientific << std::setprecision(4) << minDMass
+                 << std::setw(14) << maxDMass
+                 << std::setw(14) << (nSegments > 0 ? sumDMass / nSegments : 0.0)
+                 << endl;
+        }
+
+        delete sampleIso;
+    }
+
+    // Diagnostic: show raw log-likelihood values for each power
+    cout << "\n--- Raw Log-Likelihood Summary ---" << endl;
+    cout << std::setw(8) << "Power"
+         << std::setw(14) << "Mean LL"
+         << std::setw(14) << "Min LL"
+         << std::setw(14) << "Max LL"
+         << std::setw(12) << "Skipped"
+         << endl;
+    cout << std::string(62, '-') << endl;
+
+    for (int power = settings.minPower; power <= settings.maxPower; ++power) {
+        const int powerIdx = power - settings.minPower;
+        const double* powerLikes = logLikes[powerIdx].data();
+
         double sum = 0.0;
-        for (double d : diffs) sum += d;
-        double mean = sum / nGridPoints;
+        double minLL = std::numeric_limits<double>::max();
+        double maxLL = std::numeric_limits<double>::lowest();
 
-        double sumSq = 0.0;
-        for (double d : diffs) sumSq += (d - mean) * (d - mean);
-        double stdDev = std::sqrt(sumSq / nGridPoints);
-
-        double minDiff = *std::min_element(diffs.begin(), diffs.end());
-        double maxDiff = *std::max_element(diffs.begin(), diffs.end());
-
-        bool shapeOK = (stdDev < 0.1);
+        for (int i = 0; i < nGridPoints; ++i) {
+            sum += powerLikes[i];
+            if (powerLikes[i] < minLL) minLL = powerLikes[i];
+            if (powerLikes[i] > maxLL) maxLL = powerLikes[i];
+        }
 
         cout << std::setw(8) << power
-             << std::setw(15) << std::fixed << std::setprecision(4) << mean
-             << std::setw(15) << stdDev
-             << std::setw(15) << minDiff
-             << std::setw(15) << maxDiff
-             << std::setw(12) << (shapeOK ? "YES" : "NO")
+             << std::setw(14) << std::scientific << std::setprecision(4) << (sum / nGridPoints)
+             << std::setw(14) << minLL
+             << std::setw(14) << maxLL
+             << std::setw(12) << std::fixed << std::setprecision(0) << skippedStars[powerIdx]
+             << endl;
+    }
+
+    // Show reference separately if out of range
+    if (!refInRange) {
+        double sum = 0.0;
+        double minLL = std::numeric_limits<double>::max();
+        double maxLL = std::numeric_limits<double>::lowest();
+        for (int i = 0; i < nGridPoints; ++i) {
+            sum += refLogLikes[i];
+            if (refLogLikes[i] < minLL) minLL = refLogLikes[i];
+            if (refLogLikes[i] > maxLL) maxLL = refLogLikes[i];
+        }
+        cout << std::setw(8) << settings.referencePower << " (ref)"
+             << std::setw(14) << std::scientific << std::setprecision(4) << (sum / nGridPoints)
+             << std::setw(14) << minLL
+             << std::setw(14) << maxLL
+             << std::setw(12) << std::fixed << std::setprecision(0) << refSkippedStars
+             << endl;
+    }
+
+    // Sample: show first few grid points for all powers
+    cout << "\n--- Sample Grid Points (first 3) ---" << endl;
+    cout << std::setw(6) << "Grid";
+    for (int power = settings.minPower; power <= settings.maxPower; ++power) {
+        cout << std::setw(14) << ("P" + std::to_string(power));
+    }
+    cout << endl;
+    cout << std::string(6 + 14 * nPowers, '-') << endl;
+
+    for (int i = 0; i < std::min(3, nGridPoints); ++i) {
+        cout << std::setw(6) << i;
+        for (int power = settings.minPower; power <= settings.maxPower; ++power) {
+            cout << std::setw(14) << std::scientific << std::setprecision(4)
+                 << logLikes[power - settings.minPower][i];
+        }
+        cout << endl;
+    }
+
+    cout << "\n--- Differences from Reference ---" << endl;
+    cout << std::setw(8) << "Power"
+         << std::setw(14) << "Mean Diff"
+         << std::setw(14) << "Std Dev"
+         << std::setw(14) << "Min Diff"
+         << std::setw(14) << "Max Diff"
+         << std::setw(10) << "Shape OK?"
+         << endl;
+    cout << std::string(74, '-') << endl;
+
+    for (int power = settings.minPower; power <= settings.maxPower; ++power) {
+        const int powerIdx = power - settings.minPower;
+        const double* powerLikes = logLikes[powerIdx].data();
+        const double* refLikes = refLogLikes.data();
+
+        // Single-pass computation of sum, sumSq, min, max
+        double sum = 0.0, sumSq = 0.0;
+        double minDiff = std::numeric_limits<double>::max();
+        double maxDiff = std::numeric_limits<double>::lowest();
+
+        for (int i = 0; i < nGridPoints; ++i) {
+            const double diff = powerLikes[i] - refLikes[i];
+            sum += diff;
+            sumSq += diff * diff;
+            if (diff < minDiff) minDiff = diff;
+            if (diff > maxDiff) maxDiff = diff;
+        }
+
+        const double mean = sum / nGridPoints;
+        // Var(X) = E[X^2] - E[X]^2
+        const double variance = sumSq / nGridPoints - mean * mean;
+        const double stdDev = std::sqrt(std::max(0.0, variance));
+
+        const bool shapeOK = (stdDev < 0.05);
+
+        cout << std::setw(8) << power
+             << std::setw(14) << std::scientific << std::setprecision(4) << mean
+             << std::setw(14) << stdDev
+             << std::setw(14) << minDiff
+             << std::setw(14) << maxDiff
+             << std::setw(10) << (shapeOK ? "YES" : "NO")
              << endl;
     }
 
     cout << "\nInterpretation:" << endl;
     cout << "  Mean Diff: constant offset (OK - cancels in MCMC ratios)" << endl;
     cout << "  Std Dev: shape distortion (BAD - changes posteriors)" << endl;
-    cout << "  Shape OK: Std Dev < 0.1" << endl;
+    cout << "  Shape OK: Std Dev < 0.05" << endl;
 
     return 0;
 }
